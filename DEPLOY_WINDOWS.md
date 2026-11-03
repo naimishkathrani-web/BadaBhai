@@ -66,8 +66,8 @@ Read `HANDOFF.md` first. This chat does not automatically gain access to the ser
 
 ## 6. Known gaps before wider use
 
-- Still half-duplex; no interruption handling. The full text is generated before speech synthesis, so a server move alone will not make conversation instantaneous.
-- Add first-sentence streaming, bounded simultaneous calls, endpointing tuning and latency measurements before calling this a natural realtime assistant.
+- Text now streams into sentence-sized synthesis jobs; later synthesis overlaps playback. Press 9 to interrupt and clear playback. Speech-triggered interruption and echo-aware full duplex are still future work.
+- Default capacity is one simultaneous call (MAX_CONCURRENT_CALLS). Tune endpointing and measure latency before calling this a natural realtime assistant. Minimal reasoning is the default; harder questions may need more reasoning.
 - Use timestamps/timing logs to distinguish recognition, Meta inference and speech generation delays. Short replies and preloaded voices reduce waiting, but are not a latency guarantee.
 - Test trial expiry, Exotel AgentStream pricing/activation, Meta billing limits and restart recovery.
 - MMS has noncommercial license restrictions. Review rights before offering a commercial product.

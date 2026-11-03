@@ -8,6 +8,7 @@ import os
 import secrets
 import wave
 import time
+from websockets.exceptions import ConnectionClosed
 from pathlib import Path
 from contextlib import asynccontextmanager
 
@@ -39,6 +40,7 @@ async def lifespan(app):
 
 
 app = FastAPI(title='BadaBhai', lifespan=lifespan)
+active_calls = 0
 
 
 def authorized(value):
@@ -101,21 +103,26 @@ class Call:
         self.mark = None
         self.busy = False
         self.media_seen = False
+        self.interrupted = asyncio.Event()
+        self.turn_task = None
 
     async def send(self, event, **kwargs):
         await self.ws.send_json({'event': event, 'stream_sid': self.sid, **kwargs})
 
-    async def say(self, text, language):
+    async def say(self, text, language, pcm=None):
         was_busy = self.busy
         self.busy = True
         try:
             started = time.perf_counter()
-            pcm = await asyncio.to_thread(voice.synthesize, text, language, self.rate)
+            if pcm is None:
+                pcm = await asyncio.to_thread(voice.synthesize, text, language, self.rate)
             log.warning('Speech synthesis completed in %.2fs', time.perf_counter() - started)
             log.warning('Sending spoken audio: language=%s duration=%.1fs', language, len(pcm)/(self.rate*2))
             self.playback.clear()
             self.mark = secrets.token_hex(8)
             for chunk in chunks(pcm, self.rate):
+                if self.interrupted.is_set():
+                    return
                 await self.send('media', media={'payload': base64.b64encode(chunk).decode()})
                 await asyncio.sleep(0.2)
             await self.send('mark', mark={'name': self.mark})
@@ -153,11 +160,22 @@ class Call:
                     await self.send('media', media={'payload': base64.b64encode(pcm).decode()})
                 elif self.asr:
                     # Half-duplex MVP: send silence while replying to avoid echo feedback.
-                    await self.asr.send(converter.convert(bytes(len(pcm)) if self.busy else pcm))
+                    try:
+                        await self.asr.send(converter.convert(bytes(len(pcm)) if self.busy else pcm))
+                    except ConnectionClosed:
+                        # Recognition reader reconnects; retain the telephone connection.
+                        self.asr = None
             elif kind == 'mark' and event.get('mark', {}).get('name') == self.mark:
                 self.playback.set()
-            elif kind == 'dtmf' and self.asr:
+            elif kind == 'dtmf':
                 digit = event.get('dtmf', {}).get('digit')
+                if digit == '9':
+                    self.interrupted.set()
+                    await self.send('clear')
+                    self.playback.set()
+                    if self.turn_task and not self.turn_task.done():
+                        self.turn_task.cancel()
+                    log.warning('Caller interrupted playback using keypad')
                 if digit in ('1', '2') and not self.queue.full():
                     self.language = 'hi' if digit == '1' else 'en'
                     self.queue.put_nowait(('language', self.language))
@@ -165,61 +183,134 @@ class Call:
                 return
 
     async def transcripts(self):
-        while self.asr is None:
-            await asyncio.sleep(0.05)
-        async for raw in self.asr:
-            if not isinstance(raw, str):
-                continue
-            event = json.loads(raw)
-            if event.get('type') == 'error':
-                # Only provider diagnostic text; never log transcripts/audio.
-                detail = str(event.get('message', 'No provider detail'))[:400]
-                for name in ('MODEL_API_KEY', 'APP_TOKEN'):
-                    secret = os.getenv(name)
-                    if secret:
-                        detail = detail.replace(secret, '[redacted]')
-                log.warning('Meta recognition error: %s', detail)
-                raise RuntimeError('Meta speech session failed')
-            if event.get('type') == 'speechComplete':
-                text = event.get('transcript', '').strip()
-                if text and not self.busy and not self.queue.full():
-                    log.warning('Completed speech turn received; queued for answer')
-                    self.queue.put_nowait(('question', text[:2000]))
+        failures = 0
+        while True:
+            while self.asr is None:
+                await asyncio.sleep(0.05)
+            current = self.asr
+            try:
+                async for raw in current:
+                    if not isinstance(raw, str):
+                        continue
+                    event = json.loads(raw)
+                    if event.get('type') == 'error':
+                        raise RuntimeError('Meta recognition provider error')
+                    if event.get('type') == 'speechComplete':
+                        text = event.get('transcript', '').strip()
+                        if text and not self.busy and not self.queue.full():
+                            failures = 0
+                            log.warning('Completed speech turn received; queued for answer')
+                            self.queue.put_nowait(('question', text[:2000]))
+            except (ConnectionClosed, RuntimeError) as exc:
+                log.warning('Recognition stream interrupted: %s', type(exc).__name__)
+            self.asr = None
+            await current.close()
+            while self.asr is None:
+                failures += 1
+                if failures > 3:
+                    raise RuntimeError('Recognition could not reconnect after three attempts')
+                try:
+                    self.asr = await meta.connect_asr()
+                    log.warning('Recognition reconnected; telephone call preserved')
+                    if not self.busy and not self.queue.full():
+                        self.queue.put_nowait(('notice', ''))
+                except Exception as exc:
+                    log.warning('Recognition reconnect failed: %s', type(exc).__name__)
+                    await asyncio.sleep(1)
+
+    async def speak_answer(self, messages, language):
+        """Overlap model text and next-sentence synthesis with current audio playback."""
+        queue = asyncio.Queue(maxsize=2)
+        started = time.perf_counter()
+        spoken = []
+
+        async def produce():
+            try:
+                async for sentence in meta.stream_sentences(messages, language):
+                    if self.interrupted.is_set():
+                        break
+                    text_ready = time.perf_counter()
+                    log.warning('Streamed sentence text ready at %.2fs', text_ready - started)
+                    pcm = await asyncio.to_thread(voice.synthesize, sentence, language, self.rate)
+                    log.warning('Streamed sentence synthesis took %.2fs', time.perf_counter() - text_ready)
+                    await queue.put((sentence, pcm, None))
+            except Exception as exc:
+                await queue.put((None, None, exc))
+            finally:
+                # Cancellation must not block trying to enqueue into a full queue.
+                if not asyncio.current_task().cancelling():
+                    await queue.put((None, None, None))
+
+        producer = asyncio.create_task(produce())
+        try:
+            while not self.interrupted.is_set():
+                sentence, pcm, error = await queue.get()
+                if error:
+                    raise error
+                if sentence is None:
+                    break
+                if not spoken:
+                    log.warning('Answer first audio ready in %.2fs after final transcript', time.perf_counter() - started)
+                spoken.append(sentence)
+                await self.say(sentence, language, pcm=pcm)
+            if not spoken and not self.interrupted.is_set():
+                raise RuntimeError('No spoken answer generated')
+            return ' '.join(spoken) + (' [Interrupted by caller]' if self.interrupted.is_set() else '')
+        finally:
+            producer.cancel()
+            await asyncio.gather(producer, return_exceptions=True)
 
     async def respond(self):
         while True:
             kind, text = await self.queue.get()
+            self.interrupted.clear()
             if kind == 'welcome':
                 await self.say(WELCOME_HI, 'hi')
                 await self.say(WELCOME_EN, 'en')
             elif kind == 'language':
                 await self.say('अपना सवाल पूछिए।' if text == 'hi' else 'Please ask your question.', text)
+            elif kind == 'notice':
+                await self.say(RETRY_HI if self.language == 'hi' else RETRY_EN, self.language)
             else:
                 self.busy = True
                 try:
                     messages = self.history + [{'role': 'user', 'content': text}]
                     log.warning('Requesting Meta answer')
                     started = time.perf_counter()
-                    reply = await meta.answer(messages, self.language)
-                    log.warning('Meta answer completed in %.2fs', time.perf_counter() - started)
-                    log.warning('Meta answer ready; preparing speech')
-                    await self.say(reply, self.language)
+                    self.turn_task = asyncio.create_task(self.speak_answer(messages, self.language))
+                    try:
+                        reply = await self.turn_task
+                    except asyncio.CancelledError:
+                        if not self.interrupted.is_set():
+                            raise
+                        reply = '[Reply interrupted by caller]'
+                    log.warning('Spoken answer turn completed in %.2fs', time.perf_counter() - started)
                     self.history = (messages + [{'role': 'assistant', 'content': reply}])[-12:]
                 except Exception as exc:
                     log.warning('Answer turn failed (%s); keeping call open', type(exc).__name__)
                     await self.say(RETRY_HI if self.language == 'hi' else RETRY_EN, self.language)
                 finally:
+                    self.turn_task = None
                     self.busy = False
 
 
 @app.websocket('/exotel')
 @app.websocket('/exotel/{connection_token}')
 async def exotel(ws: WebSocket, connection_token: str = ''):
+    global active_calls
     if not authorized(connection_token or ws.query_params.get('token')):
         log.warning('Call connection rejected: app token missing or incorrect')
         await ws.close(code=1008)
         return
-    await ws.accept()
+    if active_calls >= int(os.getenv('MAX_CONCURRENT_CALLS', '1')):
+        await ws.close(code=1013)
+        return
+    active_calls += 1
+    try:
+        await ws.accept()
+    except BaseException:
+        active_calls -= 1
+        raise
     log.warning('Call connection accepted')
     call = Call(ws)
     tasks = [asyncio.create_task(call.receive(), name='telephone')]
@@ -238,6 +329,7 @@ async def exotel(ws: WebSocket, connection_token: str = ''):
         # Avoid logging API responses, transcripts, caller numbers or URL tokens.
         log.warning('Call ended with %s; verify model access/audio configuration', type(exc).__name__)
     finally:
+        active_calls -= 1
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)

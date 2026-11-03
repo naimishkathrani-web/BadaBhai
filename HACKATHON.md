@@ -22,7 +22,7 @@ Meta MMS generates speech locally. It is noncommercial CC-BY-NC-4.0; verify the 
 - [ ] Participant confirms acceptance and accepts applicable official rules/waiver personally.
 - [ ] Confirm track, representative and all contributors; at most four people, solo allowed.
 - [x] Local Hindi and English answers and speech generation exercised.
-- [x] Eleven automated local checks passed before deployment preparation, including answer-failure recovery.
+- [x] Sixteen automated checks passed, including streaming order, recognition reconnection, keypad interruption and answer-failure recovery.
 - [x] Participant confirmed a real inbound Exotel call answered multiple questions.
 - [ ] Verify real calls in both languages on the final server, including restart recovery.
 - [ ] Keep a reliable live demo available during judging; temporary tunnels stop if the computer/tunnel stops.

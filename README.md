@@ -4,6 +4,20 @@ Hindi and English assistance on ordinary phones using Meta models and Exotel Voi
 
 Real incoming calls have been tested by the participant. For Windows Server 2022 setup, permanent hosting and continuing in Cursor/Codex, read [DEPLOY_WINDOWS.md](DEPLOY_WINDOWS.md) and [HANDOFF.md](HANDOFF.md).
 
+## Call architecture
+
+```mermaid
+flowchart LR
+  A[Basic phone] <--> B[Exotel Voicebot]
+  B <--> C[Authenticated WebSocket bridge]
+  C --> D[Meta Muse Voice Transcribe]
+  D --> E[Meta Muse Spark: streaming text]
+  E --> F[Sentence buffer and local Meta MMS]
+  F --> C
+```
+
+The phone path streams text into sentence-sized speech jobs. Synthesis of the next sentence overlaps playback of the current sentence. Press **9** to stop a reply, then ask a new question. Speech-triggered interruption is not yet implemented. Recognition disconnects are retried up to three times without immediately dropping the telephone socket. The default is one simultaneous call.
+
 ## Models
 
 - Answers: Meta Model API `muse-spark-1.3` (configurable).
@@ -48,13 +62,13 @@ For an audio-only test, set `CALL_MODE=echo` and restart. This repeats caller au
 
 ## Current limitations
 
-- Half-duplex: wait for replies to finish. Interruption handling is not implemented.
+- Half-duplex for voice: wait for replies or press 9 to interrupt. Automatic interruption by speaking is not implemented.
 - Five-minute limit by default; no outbound calling. Data is discarded on disconnect.
 - No transcript/caller-number logging by this app; Exotel and Meta have separate data handling policies.
 - Account model access, live recognition and real telephone integration require verification with your key.
 - Voice synthesis runs locally and can be slow; warm up first. Evaluate Hindi/English mixing and number pronunciation with real callers.
 - Answer-generation failures play a retry prompt and keep the call open. Connection/recognition failures may still end the session; no alternate model provider is silently used.
-- Before public launch add concurrency/rate limits, deployment monitoring and stronger provider authentication. This is a local hackathon prototype.
+- One simultaneous call by default; before public launch add per-caller rate limits, deployment monitoring and stronger provider authentication. This is a local hackathon prototype.
 - Neither a normal Exotel number nor forwarding a Vi mobile makes calls toll-free.
 
 ## Verification

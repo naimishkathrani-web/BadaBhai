@@ -9,6 +9,12 @@ from starlette.websockets import WebSocketDisconnect
 import pytest
 
 
+def stream_from_answer(responder):
+    async def stream(messages, language):
+        yield await responder(messages, language)
+    return stream
+
+
 def test_chat_requires_token(monkeypatch):
     monkeypatch.setenv('APP_TOKEN', 'test-secret')
     with TestClient(app) as client:
@@ -88,7 +94,7 @@ def test_voicebot_welcome_language_and_answer(monkeypatch):
         call.sid = 'fake-stream'
         monkeypatch.setattr('app.main.voice.synthesize', lambda *args: bytes(3200))
         responder = AsyncMock(return_value='A short answer.')
-        monkeypatch.setattr('app.main.meta.answer', responder)
+        monkeypatch.setattr('app.main.meta.stream_sentences', stream_from_answer(responder))
         task = asyncio.create_task(call.respond())
         try:
             call.queue.put_nowait(('welcome', ''))
@@ -138,7 +144,8 @@ def test_answer_failure_keeps_call_open(monkeypatch):
         call = Call(AsyncMock())
         call.language = 'en'
         call.say = AsyncMock()
-        monkeypatch.setattr('app.main.meta.answer', AsyncMock(side_effect=[RuntimeError('empty answer'), 'It worked.']))
+        monkeypatch.setattr('app.main.voice.synthesize', lambda *args: bytes(3200))
+        monkeypatch.setattr('app.main.meta.stream_sentences', stream_from_answer(AsyncMock(side_effect=[RuntimeError('empty answer'), 'It worked.'])))
         worker = asyncio.create_task(call.respond())
         try:
             await call.queue.put(('question', 'First question'))

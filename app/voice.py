@@ -9,6 +9,8 @@ _lock = threading.Lock()
 
 @lru_cache(maxsize=2)
 def load(language):
+    import torch
+    torch.set_num_threads(max(1, int(os.getenv('MMS_TORCH_THREADS', '4'))))
     from transformers import AutoTokenizer, VitsModel
     model_id = 'facebook/mms-tts-hin' if language == 'hi' else 'facebook/mms-tts-eng'
     local_only = os.getenv('MMS_ALLOW_DOWNLOAD', '0') != '1'
