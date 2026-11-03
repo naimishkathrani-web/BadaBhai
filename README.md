@@ -1,6 +1,6 @@
 # BadaBhai
 
-Hindi and English assistance on ordinary phones using Meta models and Exotel Voicebot.
+Hindi and English assistance on ordinary phones using Meta models and Exotel Voicebot. The protected web dashboard shows a live, ephemeral call transcript, source used for the PM-KISAN demo, and first-response timing. No caller number or transcript is persisted by this app.
 
 Real incoming calls have been tested by the participant. For Windows Server 2022 setup, permanent hosting and continuing in Cursor/Codex, read [DEPLOY_WINDOWS.md](DEPLOY_WINDOWS.md) and [HANDOFF.md](HANDOFF.md).
 
@@ -17,6 +17,12 @@ flowchart LR
 ```
 
 The phone path streams text into sentence-sized speech jobs. Synthesis of the next sentence overlaps playback of the current sentence. Press **9** to stop a reply, then ask a new question. Speech-triggered interruption is not yet implemented. Recognition disconnects are retried up to three times without immediately dropping the telephone socket. The default is one simultaneous call.
+
+The dashboard at `/` authenticates with `APP_TOKEN` and can be open during an Exotel call. It shows caller transcript updates, BadaBhai reply sentences, selected language, source link/verification date, speech-end to transcript-final time, and time to first answer text, first speech preparation, first audio packet and turn completion. The server does not persist call events; the operator's browser keeps the visible transcript until the next call or the page is closed. The live view is intended for a trusted demo operator; protect it with HTTPS and a private app token.
+
+The PM-KISAN demo uses a short source context from the official portal, reviewed on 2026-11-04. It explains general scheme information and routes personal eligibility/status questions to the official KYS route; it does not decide eligibility or ask for Aadhaar/OTP/bank PIN. Refresh the reference and verification date before relying on it after the demo.
+
+After PM-KISAN guidance, the caller may press **3** to opt in to a short official-link SMS. The recipient number comes from Exotel's inbound call start event and is never shown in the dashboard or app logs. SMS delivery remains disabled until Exotel API credentials, an approved Sender ID, DLT Entity ID and approved Hindi/English template IDs are configured. A provider acceptance is not proof of delivery.
 
 ## Models
 
@@ -64,12 +70,13 @@ For an audio-only test, set `CALL_MODE=echo` and restart. This repeats caller au
 
 - Half-duplex for voice: wait for replies or press 9 to interrupt. Automatic interruption by speaking is not implemented.
 - Five-minute limit by default; no outbound calling. Data is discarded on disconnect.
-- No transcript/caller-number logging by this app; Exotel and Meta have separate data handling policies.
+- No persistent transcript/caller-number logging by this app; authenticated dashboard events and call details are in memory only. Exotel and Meta have separate data handling policies.
 - Account model access, live recognition and real telephone integration require verification with your key.
 - Voice synthesis runs locally and can be slow; warm up first. Evaluate Hindi/English mixing and number pronunciation with real callers.
 - Answer-generation failures play a retry prompt and keep the call open. Connection/recognition failures may still end the session; no alternate model provider is silently used.
 - One simultaneous call by default; before public launch add per-caller rate limits, deployment monitoring and stronger provider authentication. This is a local hackathon prototype.
 - Neither a normal Exotel number nor forwarding a Vi mobile makes calls toll-free.
+- Live dashboard and scheme facts are a hackathon operator view, not an official government service. Verify current scheme details and deployment permissions before public rollout.
 
 ## Verification
 

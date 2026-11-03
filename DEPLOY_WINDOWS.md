@@ -26,6 +26,12 @@ Run setup under the same account that will host the app. Use `.venv\Scripts\pyth
 
 Wait for `Voice startup complete: ready to accept calls` in the console before testing. Open http://127.0.0.1:8000, use the private APP_TOKEN, and test Hindi and English replies and playback. Initial startup can take time; later calls reuse the loaded voices.
 
+The home page is also the live call dashboard. Enter the APP_TOKEN and select **Connect dashboard** before placing an Exotel test call. The transcript, language, source reference and per-turn timing appear live. The server does not persist call events; the operator's browser keeps the visible transcript until the next call or page close. Treat the page and APP_TOKEN as operator-only; use HTTPS on a public hostname.
+
+### Optional opt-in SMS recap
+
+The caller can press **3 after PM-KISAN guidance** to request the official portal link by SMS. The app sends only after that keypress and uses the inbound caller number supplied by Exotel in the call start event. SMS is disabled until the server's private `.env` contains `EXOTEL_SMS_BASE_URL`, `EXOTEL_API_KEY`, `EXOTEL_API_TOKEN`, `EXOTEL_ACCOUNT_SID`, `EXOTEL_SMS_FROM`, `EXOTEL_DLT_ENTITY_ID`, and approved `EXOTEL_DLT_TEMPLATE_HI` / `EXOTEL_DLT_TEMPLATE_EN` values. Exotel requires approved DLT registration and sender/template configuration for Indian traffic. Check the received SMS on a real phone before showing this feature as working; HTTP acceptance does not confirm delivery. Do not commit these values.
+
 ## 3. Permanent public hostname
 
 Recommended address: `badabhai.shreejientserv.in` (proposed, not configured). The parent domain currently has dns-parking.com nameservers. A standard Cloudflare published-application tunnel needs an appropriately configured Cloudflare DNS zone. **Do not casually change nameservers**: inventory and preserve existing website, email MX, SPF/DKIM/DMARC, verification, and other DNS records before a migration.

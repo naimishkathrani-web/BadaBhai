@@ -21,6 +21,15 @@ def test_chat_requires_token(monkeypatch):
         assert client.post('/api/chat', json={'text': 'hello'}).status_code == 401
 
 
+def test_home_serves_live_operator_dashboard():
+    with TestClient(app) as client:
+        page = client.get('/')
+    assert page.status_code == 200
+    assert 'Live conversation' in page.text
+    assert '/api/live' in page.text
+    assert 'Official source' in page.text
+
+
 def test_chat_uses_selected_language(monkeypatch):
     monkeypatch.setenv('APP_TOKEN', 'test-secret')
     answer = AsyncMock(return_value='नमस्ते')
@@ -29,6 +38,37 @@ def test_chat_uses_selected_language(monkeypatch):
         result = client.post('/api/chat', headers={'X-App-Token': 'test-secret'}, json={'text': 'hello', 'language': 'hi'})
         assert result.json() == {'answer': 'नमस्ते'}
     assert answer.call_args.args[1] == 'hi'
+
+
+def test_pm_kisan_question_receives_official_context(monkeypatch):
+    monkeypatch.setenv('APP_TOKEN', 'test-secret')
+    answer = AsyncMock(return_value='Check the official status page.')
+    monkeypatch.setattr('app.main.meta.answer', answer)
+    with TestClient(app) as client:
+        result = client.post('/api/chat', headers={'X-App-Token': 'test-secret'},
+                             json={'text': 'How do I check PM-KISAN status?', 'language': 'en'})
+        assert result.status_code == 200
+    messages = answer.call_args.args[0]
+    assert messages[0]['role'] == 'developer'
+    assert 'pmkisan.gov.in' in messages[0]['content']
+    assert messages[-1]['role'] == 'user'
+
+
+def test_live_dashboard_requires_app_token(monkeypatch):
+    monkeypatch.setenv('APP_TOKEN', 'test-secret')
+    with TestClient(app) as client:
+        with client.websocket_connect('/api/live') as ws:
+            ws.send_json({'token': 'wrong'})
+            with pytest.raises(WebSocketDisconnect):
+                ws.receive_json()
+
+
+def test_live_dashboard_sends_snapshot_to_authenticated_operator(monkeypatch):
+    monkeypatch.setenv('APP_TOKEN', 'test-secret')
+    with TestClient(app) as client:
+        with client.websocket_connect('/api/live') as ws:
+            ws.send_json({'token': 'test-secret'})
+            assert ws.receive_json()['event'] == 'snapshot'
 
 
 def test_echo_protocol(monkeypatch):
@@ -72,6 +112,7 @@ def test_meta_asr_handshake(monkeypatch):
     handshake = json.loads(socket.send.call_args.args[0])
     assert handshake['mode'] == 'ENDPOINTING'
     assert handshake['languageBias'] == ['Hindi', 'English']
+    assert 'PM-KISAN' in handshake['keywords']
     assert handshake['authorization']['accessToken'] == 'Bearer fake-test-key'
 
 
@@ -136,6 +177,74 @@ def test_language_key_is_kept_during_welcome():
         assert call.queue.get_nowait() == ('language', 'en')
 
     asyncio.run(scenario())
+
+
+def test_sms_requires_keypad_consent_and_is_disabled_without_exotel_setup(monkeypatch):
+    from app.main import Call
+    from app.benefits import PM_KISAN
+    for key in ('EXOTEL_API_KEY', 'EXOTEL_API_TOKEN', 'EXOTEL_ACCOUNT_SID', 'EXOTEL_SMS_FROM',
+                'EXOTEL_DLT_ENTITY_ID', 'EXOTEL_DLT_TEMPLATE_HI', 'EXOTEL_DLT_TEMPLATE_EN'):
+        monkeypatch.delenv(key, raising=False)
+
+    async def scenario():
+        socket = AsyncMock()
+        socket.receive_json.side_effect = [
+            {'event': 'dtmf', 'dtmf': {'digit': '3'}},
+            {'event': 'stop'},
+        ]
+        call = Call(socket)
+        call.sid = 'test'
+        call.source = PM_KISAN
+        call.caller_number = '+919876543210'
+        await call.receive()
+        assert call.sms_task is not None
+        await call.sms_task
+        assert call.sms_requested
+        assert call.queue.get_nowait()[0] == 'sms_setup'
+
+    asyncio.run(scenario())
+
+
+def test_sms_sender_uses_configured_exotel_credentials_and_dlt_template(monkeypatch):
+    from app import sms
+    for key, value in {
+        'EXOTEL_API_KEY': 'test-key',
+        'EXOTEL_API_TOKEN': 'test-token',
+        'EXOTEL_ACCOUNT_SID': 'test-account',
+        'EXOTEL_SMS_FROM': 'EXOTEL',
+        'EXOTEL_DLT_ENTITY_ID': 'test-entity',
+        'EXOTEL_DLT_TEMPLATE_EN': 'test-template',
+        'EXOTEL_SMS_BASE_URL': 'https://api.in.exotel.com',
+    }.items():
+        monkeypatch.setenv(key, value)
+
+    captured = {}
+    class Response:
+        def raise_for_status(self):
+            pass
+        def json(self):
+            return {'SMSMessage': {'Status': 'queued'}}
+    class Client:
+        def __init__(self, **kwargs):
+            captured['timeout'] = kwargs['timeout']
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *args):
+            pass
+        async def post(self, url, **kwargs):
+            captured['url'] = url
+            captured.update(kwargs)
+            return Response()
+    monkeypatch.setattr(sms.httpx, 'AsyncClient', Client)
+    result = asyncio.run(sms.send_recap(
+        '+919876543210', 'en', 'PM-KISAN info: https://pmkisan.gov.in/'))
+    assert result == 'queued'
+    assert captured['url'].endswith('/v1/Accounts/test-account/Sms/send')
+    assert captured['auth'] == ('test-key', 'test-token')
+    assert captured['data']['To'] == '+919876543210'
+    assert captured['data']['DltEntityId'] == 'test-entity'
+    assert captured['data']['DltTemplateId'] == 'test-template'
+    assert captured['data']['SmsType'] == 'transactional_opt_in'
 
 
 def test_answer_failure_keeps_call_open(monkeypatch):

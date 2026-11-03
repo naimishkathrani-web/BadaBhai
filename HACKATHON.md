@@ -13,7 +13,8 @@ Meta MMS generates speech locally. It is noncommercial CC-BY-NC-4.0; verify the 
 - Theme: **Build for Your World**.
 - Track: Indie Developer is appropriate if entering as an individual; participant must confirm.
 - Project: voice access to practical information and digital services from basic phones, in Hindi and English.
-- Show accessibility, keypad language selection, Meta speech recognition, spoken replies, multi-turn phone conversations and the Exotel bridge.
+- Show accessibility, keypad language selection, Meta speech recognition, spoken replies, multi-turn phone conversations and the Exotel bridge. The live judge dashboard surfaces transcript updates, selected language, source reference and first-response timings without displaying caller numbers.
+- The focused PM-KISAN demonstration uses an official source and directs personal eligibility/status questions to the official channel. Pressing 3 after the answer requests an official-link SMS, but the feature only sends when the server has Exotel credentials and approved DLT configuration.
 - Do not position the product as a medical/mental-health advisor, generic education chatbot, political/war assistant, screening system or another banned anti-project.
 - Do not describe the current regular Exotel number as toll-free or claim global availability. Toll-free funding and expansion are future work.
 
@@ -22,7 +23,7 @@ Meta MMS generates speech locally. It is noncommercial CC-BY-NC-4.0; verify the 
 - [ ] Participant confirms acceptance and accepts applicable official rules/waiver personally.
 - [ ] Confirm track, representative and all contributors; at most four people, solo allowed.
 - [x] Local Hindi and English answers and speech generation exercised.
-- [x] Sixteen automated checks passed, including streaming order, recognition reconnection, keypad interruption and answer-failure recovery.
+- [x] Twenty-two automated checks passed, including streaming order, recognition reconnection, keypad interruption, source context, live dashboard authentication and opt-in SMS setup behavior.
 - [x] Participant confirmed a real inbound Exotel call answered multiple questions.
 - [ ] Verify real calls in both languages on the final server, including restart recovery.
 - [ ] Keep a reliable live demo available during judging; temporary tunnels stop if the computer/tunnel stops.
@@ -38,7 +39,7 @@ Claims of compliance require verifying every pending item. Judging/acceptance re
 
 ## Demo priorities
 
-Impact 30%, Meta tooling 25%, technical execution 20%, demo 25%. Show a basic-phone caller asking a concrete everyday question and getting a useful reply, changing language and continuing the conversation. Explain how the bridge handles low-bandwidth telephone audio and what fails gracefully. Avoid hypothetical features or presenting the browser text page as the complete phone product.
+Impact 30%, Meta tooling 25%, technical execution 20%, demo 25%. Show a basic-phone caller asking a concrete PM-KISAN question in natural Hindi or English and getting concise, source-backed next steps. Keep the operator dashboard visible to show the transcript, official source and time to first text/audio. Demonstrate keypad interruption and, only when DLT/SMS is configured and tested, press 3 for a consented text recap. Explain the real half-duplex limitation; don't present the browser text sandbox as the phone product or claim government approval.
 
 ## Credits and optional awards
 
