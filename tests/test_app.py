@@ -21,13 +21,17 @@ def test_chat_requires_token(monkeypatch):
         assert client.post('/api/chat', json={'text': 'hello'}).status_code == 401
 
 
-def test_home_serves_live_operator_dashboard():
+def test_home_and_operator_routes_serve_their_pages():
     with TestClient(app) as client:
-        page = client.get('/')
-    assert page.status_code == 200
-    assert 'Live conversation' in page.text
-    assert '/api/live' in page.text
-    assert 'Official source' in page.text
+        landing = client.get('/')
+        dashboard_page = client.get('/operator')
+    assert landing.status_code == dashboard_page.status_code == 200
+    assert 'Good guidance.' in landing.text
+    assert 'PM-KISAN' in landing.text
+    assert 'scrimba.com/explain/guide04lf97i2e' in landing.text
+    assert 'Live conversation' in dashboard_page.text
+    assert '/api/live' in dashboard_page.text
+    assert 'Official source' in dashboard_page.text
 
 
 def test_chat_uses_selected_language(monkeypatch):

@@ -54,7 +54,23 @@ def authorized(value):
 
 @app.get('/', response_class=HTMLResponse)
 def home():
+    return Path(__file__).with_name('landing.html').read_text(encoding='utf-8')
+
+
+@app.get('/operator', response_class=HTMLResponse)
+def operator_dashboard():
     return Path(__file__).with_name('index.html').read_text(encoding='utf-8')
+
+
+@app.get('/api/public-demo-config')
+def public_demo_config():
+    # Only deliberately public, non-secret display values belong here.
+    phone = os.getenv('JUDGES_PUBLIC_PHONE_E164', '').strip()
+    if not re.fullmatch(r'\+[1-9][0-9]{7,14}', phone):
+        phone = ''
+    return {'phone': phone,
+            'video_url': os.getenv('JUDGES_PUBLIC_VIDEO_URL',
+                'https://scrimba.com/explain/guide04lf97i2e?claim=j7oakcpcb1jsi5o4&fullscreen=1')}
 
 
 @app.get('/health')

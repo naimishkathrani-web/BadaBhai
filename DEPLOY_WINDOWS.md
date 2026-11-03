@@ -26,7 +26,17 @@ Run setup under the same account that will host the app. Use `.venv\Scripts\pyth
 
 Wait for `Voice startup complete: ready to accept calls` in the console before testing. Open http://127.0.0.1:8000, use the private APP_TOKEN, and test Hindi and English replies and playback. Initial startup can take time; later calls reuse the loaded voices.
 
-The home page is also the live call dashboard. Enter the APP_TOKEN and select **Connect dashboard** before placing an Exotel test call. The transcript, language, source reference and per-turn timing appear live. The server does not persist call events; the operator's browser keeps the visible transcript until the next call or page close. Treat the page and APP_TOKEN as operator-only; use HTTPS on a public hostname.
+The public judge landing page is at `/`. Open `/operator` for the live call dashboard, enter the APP_TOKEN and select **Connect dashboard** before placing an Exotel test call. The transcript, language, source reference and per-turn timing appear live. The server does not persist call events; the operator's browser keeps the visible transcript until the next call or page close. The operator UI requires the private app token; use HTTPS on the public hostname.
+
+### Judge phone number and international callers
+
+The landing page shows a telephone number only when `JUDGES_PUBLIC_PHONE_E164` is configured. Use a customer-facing number that Exotel has approved for public display, and confirm with Exotel that the exact number/account can receive calls originating in the United States. The Exotel support guidance says not to publish an assigned ExoPhone directly; use an approved number you own and route/forward it to the ExoPhone. Keep the setting empty until that route is confirmed.
+
+For an Indian geographic number written domestically as `0` plus the area code and subscriber number (for example `080…`), the international format is typically `+91` plus the digits after the leading `0` (for example `+91 80…`). The actual Exotel allocation may be a different number type, so do not infer the public number from a WebSocket/Voicebot ExoPhone. A US judge's ability to call depends on the number type, Exotel route/account settings and US carrier. Test from a US-origin phone before promising a live call; international caller charges may apply. This project cannot guarantee international reachability based on the number format alone.
+
+Set `JUDGES_PUBLIC_PHONE_E164=+91...` in the server's private `.env` only after that confirmation. The format validator requires a plus sign and country code, but it cannot verify ownership, permission to advertise or international routing. Keep the value blank to show the page's call-line pending message.
+
+The short public video URL is stored in `JUDGES_PUBLIC_VIDEO_URL` in `.env.example` and embedded by the public page; it is an unlisted narrated project walkthrough. It explains the current Hindi/English demo and the proposed public-service direction. It is not a recording of a verified live call.
 
 ### Optional opt-in SMS recap
 

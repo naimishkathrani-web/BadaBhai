@@ -1,6 +1,6 @@
 # BadaBhai
 
-Hindi and English assistance on ordinary phones using Meta models and Exotel Voicebot. The protected web dashboard shows a live, ephemeral call transcript, source used for the PM-KISAN demo, and first-response timing. No caller number or transcript is persisted by this app.
+Hindi and English assistance on ordinary phones using Meta models and Exotel Voicebot. The public judge page at `/` introduces the project and video. The protected operator dashboard at `/operator` shows a live, ephemeral call transcript, source used for the PM-KISAN demo, and first-response timing. No caller number or transcript is persisted by this app.
 
 Real incoming calls have been tested by the participant. For Windows Server 2022 setup, permanent hosting and continuing in Cursor/Codex, read [DEPLOY_WINDOWS.md](DEPLOY_WINDOWS.md) and [HANDOFF.md](HANDOFF.md).
 
@@ -18,7 +18,9 @@ flowchart LR
 
 The phone path streams text into sentence-sized speech jobs. Synthesis of the next sentence overlaps playback of the current sentence. Press **9** to stop a reply, then ask a new question. Speech-triggered interruption is not yet implemented. Recognition disconnects are retried up to three times without immediately dropping the telephone socket. The default is one simultaneous call.
 
-The dashboard at `/` authenticates with `APP_TOKEN` and can be open during an Exotel call. It shows caller transcript updates, BadaBhai reply sentences, selected language, source link/verification date, speech-end to transcript-final time, and time to first answer text, first speech preparation, first audio packet and turn completion. The server does not persist call events; the operator's browser keeps the visible transcript until the next call or the page is closed. The live view is intended for a trusted demo operator; protect it with HTTPS and a private app token.
+The dashboard at `/operator` authenticates its WebSocket with `APP_TOKEN` and can be open during an Exotel call. It shows caller transcript updates, BadaBhai reply sentences, selected language, source link/verification date, speech-end to transcript-final time, and time to first answer text, first speech preparation, first audio packet and turn completion. The server does not persist call events; the operator's browser keeps the visible transcript until the next call or the page is closed. The live view is intended for a trusted demo operator; protect it with HTTPS and a private app token.
+
+The public page reads two deliberately public values from `/api/public-demo-config`: the judge video link and an optional public-facing phone in E.164 format. Leave `JUDGES_PUBLIC_PHONE_E164` blank until Exotel confirms that a customer-facing number may be published and can receive international-origin calls. Never put an ExoPhone assigned for app routing in this field without Exotel's approval. The current call demo supports Hindi and English only; other languages require ASR, answer-quality and voice testing before being advertised.
 
 The PM-KISAN demo uses a short source context from the official portal, reviewed on 2026-11-04. It explains general scheme information and routes personal eligibility/status questions to the official KYS route; it does not decide eligibility or ask for Aadhaar/OTP/bank PIN. Refresh the reference and verification date before relying on it after the demo.
 

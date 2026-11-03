@@ -39,7 +39,7 @@ Claims of compliance require verifying every pending item. Judging/acceptance re
 
 ## Demo priorities
 
-Impact 30%, Meta tooling 25%, technical execution 20%, demo 25%. Show a basic-phone caller asking a concrete PM-KISAN question in natural Hindi or English and getting concise, source-backed next steps. Keep the operator dashboard visible to show the transcript, official source and time to first text/audio. Demonstrate keypad interruption and, only when DLT/SMS is configured and tested, press 3 for a consented text recap. Explain the real half-duplex limitation; don't present the browser text sandbox as the phone product or claim government approval.
+Impact 30%, Meta tooling 25%, technical execution 20%, demo 25%. Start at the public judge landing page (`/`) and play the narrated walkthrough. For the live demo, have a basic-phone caller ask a concrete PM-KISAN question in natural Hindi or English and get concise, source-backed next steps. Keep `/operator` open to show the transcript, official source and time to first text/audio. Demonstrate keypad interruption and, only when DLT/SMS is configured and tested, press 3 for a consented text recap. Explain the real half-duplex limitation; don't present the browser text sandbox as the phone product or claim government approval. Advertise a call number only after Exotel confirms the public-facing route and international reachability.
 
 ## Credits and optional awards
 
