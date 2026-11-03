@@ -26,7 +26,7 @@ Meta MMS generates speech locally. It is noncommercial CC-BY-NC-4.0; verify the 
 - [x] Participant confirmed a real inbound Exotel call answered multiple questions.
 - [ ] Verify real calls in both languages on the final server, including restart recovery.
 - [ ] Keep a reliable live demo available during judging; temporary tunnels stop if the computer/tunnel stops.
-- [ ] Publish code to the public repository, excluding credentials, local URL tokens, call data and downloaded binaries.
+- [x] Code published to the public repository; staged files scanned for configured credentials. Private configuration, URL tokens, call data and downloaded binaries excluded.
 - [ ] Clearly identify work built during the event (guide lists building period 27 October–4 November).
 - [ ] Include dependency/model attribution and document rights and license constraints.
 - [ ] Record a **three-minute demo video**, with accessible video link and clear original contributions.
