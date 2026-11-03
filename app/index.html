@@ -1,0 +1,13 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BadaBhai local test</title>
+<style>body{font:18px system-ui;background:#f3f1e8;color:#17352b;max-width:740px;margin:50px auto;padding:24px}h1{font-size:48px}label{display:block;margin-top:20px}input,select,textarea,button{font:inherit;padding:12px;border:1px solid #b2b8ac;border-radius:10px}input,textarea{width:95%}button{background:#17352b;color:white;margin-top:16px}#answer{white-space:pre-wrap;background:white;padding:24px;margin-top:24px}audio{width:100%}</style>
+<h1>BadaBhai · बड़ा भाई</h1><p>AI assistance, one phone call away.</p><p>Local test: Meta answers and local Meta MMS speech. Each question starts a new conversation.</p>
+<label>App token <input id="token" type="password" autocomplete="off" placeholder="APP_TOKEN from .env, not your Meta key"></label>
+<label>Language <select id="language"><option value="hi">हिंदी</option><option value="en">English</option></select></label>
+<label>Question <textarea id="question" rows="3"></textarea></label><button id="ask">Ask BadaBhai</button> <button id="speak" disabled>Listen to answer</button>
+<div id="answer" role="status">Ready</div><p id="voice-status" role="status"></p><audio id="audio" controls hidden></audio>
+<script>
+const $=id=>document.getElementById(id);let reply='',audioUrl;
+async function request(path,text){const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','X-App-Token':$('token').value},body:JSON.stringify({text,language:$('language').value})});if(!r.ok){let e=await r.json();throw Error(typeof e.detail==='string'?e.detail:'Check your question and language')}return r}
+$('ask').onclick=async()=>{$('ask').disabled=true;$('speak').disabled=true;$('answer').textContent='Thinking…';try{reply=(await(await request('/api/chat',$('question').value)).json()).answer;$('answer').textContent=reply;$('speak').disabled=false}catch(e){$('answer').textContent=e.message}finally{$('ask').disabled=false}};
+$('speak').onclick=async()=>{$('speak').disabled=true;$('voice-status').textContent='Preparing spoken answer…';try{const blob=await(await request('/api/speech',reply)).blob();if(audioUrl)URL.revokeObjectURL(audioUrl);audioUrl=URL.createObjectURL(blob);$('audio').src=audioUrl;$('audio').hidden=false;await $('audio').play();$('voice-status').textContent=''}catch(e){$('voice-status').textContent=e.message}finally{$('speak').disabled=false}};
+</script></html>
