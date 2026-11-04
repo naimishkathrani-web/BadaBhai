@@ -65,7 +65,7 @@ def operator_dashboard():
 @app.get('/api/public-demo-config')
 def public_demo_config():
     # Only deliberately public, non-secret display values belong here.
-    phone = os.getenv('JUDGES_PUBLIC_PHONE_E164', '').strip()
+    phone = os.getenv('JUDGES_PUBLIC_PHONE_E164', '').strip() or '+917948504917'
     if not re.fullmatch(r'\+[1-9][0-9]{7,14}', phone):
         phone = ''
     return {'phone': phone,
