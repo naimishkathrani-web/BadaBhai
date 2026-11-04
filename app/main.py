@@ -218,8 +218,10 @@ class Call:
                                    'language': self.language, 'source': None})
                 await self.publish('call_state', status='connected', language=self.language)
                 if os.getenv('CALL_MODE') != 'echo':
-                    self.asr = await meta.connect_asr()
                     self.queue.put_nowait(('welcome', ''))
+                    # Speak immediately while the recognition service opens its
+                    # WebSocket; waiting here first can leave Exotel callers silent.
+                    self.asr = await meta.connect_asr()
             elif kind == 'media' and self.sid:
                 if not self.media_seen:
                     self.media_seen = True
