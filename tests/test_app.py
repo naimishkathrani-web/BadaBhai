@@ -38,6 +38,8 @@ def test_home_and_operator_routes_serve_their_pages():
     assert 'not a live Exotel recording' in landing.text
     assert 'One Call, Three Questions' in backup_demo.text
     assert 'not a live Exotel recording' in backup_demo.text
+    assert 'guide0pnl4j0rk' in backup_demo.text
+    assert 'data-lang="en"' in backup_demo.text
     assert 'Live conversation' in dashboard_page.text
     assert '/api/live' in dashboard_page.text
     assert 'token' not in dashboard_page.text.casefold()
