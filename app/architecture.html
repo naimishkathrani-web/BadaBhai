@@ -51,11 +51,11 @@
 flowchart LR
   A["Feature / basic / ordinary phone call\n(POTS)"] --> B["Exotel POTS\n1 concurrent call\nWindows Server 2022"]
   B --> C["Meta Voice Transcribe\nSTT ~800ms"]
-  C --> D["Muse Spark 1.1\nreasoning 2-5s"]
-  D --> E["Meta TTS\n+ waiting tone"]
+  C --> D["Muse Spark\nshort spoken answer"]
+  D --> E["Indian voice\nno wait tone"]
   E --> F["Caller hears answer\nKeypad 1/2/3/9"]
-  G["Operator Dashboard\nLive transcript\nSTT/Spark/TTS timing"] --- B
-  H["Future data layer\nFB Groups + IG Reels + WhatsApp posts\nLocation · Date · Contact\n+ disclaimer"] --- D
+  G["Live Desk\nwords only while the call is open"] --- B
+  H["Later, not in this call\nnearby public posts\nunverified"] --- D
   I["Later\nMore Indian languages\nOnly after a real partner\nNot part of this call"] --- D
   </div>
   <div class="note-green">Live Desk shows the words and timings only while the call is open. Phone numbers stay hidden. The call is not saved. No Aadhaar, OTP, or bank PIN. No personal account access.</div>
@@ -70,14 +70,14 @@ flowchart LR
     <li>General guidance. For personal rules, it points to an official office.</li>
     <li>A future job helper would say posts are public and unverified, and not to pay for a job.</li>
     <li>Temporary Exotel number is not toll-free, not a government helpline; international charges depend on carrier · trial till ~9 Nov · backup <a href="/backup-demo">/backup-demo</a></li>
-    <li>1 concurrent call + 3–8 sec thinking disclosed with waiting tone — latency is not hidden</li>
+    <li>One call at a time. A short pause while the answer is prepared is normal.</li>
     <li>Works on ordinary phone (no app required). WhatsApp option for those who have it, but not required.</li>
   </ul>
 </section>
 
 <section class="section" style="padding-top:0">
   <h2>4. Phased roadmap</h2>
-  <div class="phase"><strong>Phase 0 · POC today</strong><p>Exotel trial 07948504917 (active till ~9 Nov; Credits 423) · FastAPI on Windows Server 2022 · Meta STT / Muse Spark 1.1 / TTS · Hindi/English generic Q&amp;A · feature-phone call path · 1 call · live dashboard · backup video at /backup-demo</p></div>
+  <div class="phase"><strong>Phase 0 · POC today</strong><p>Exotel trial 07948504917 (active till ~9 Nov) · FastAPI on Windows Server 2022 · Meta speech-to-text and Muse Spark · Indian voice · Hindi and English · ordinary phone · one call · Live Desk · backup walkthrough at /backup-demo</p></div>
   <div class="phase"><strong>Phase 1 · Immediate (0–3 months)</strong><p>FB Groups + IG Reels public job index + WhatsApp seeker/poster numbers · Rajkot &amp; Ahmedabad pilot · MCA/BTech interns · half-prize investment · disclaimers + e-Shram benefits · location asked today; tower triangulation later with operator tie-ups</p></div>
   <div class="phase"><strong>Phase 2 · Regional scale (3–9 months)</strong><p>Ayushman / PM-KISAN / e-Shram explainers in Gujarati, Tamil, Bengali, Bhojpuri with official sources · more STT/TTS languages · state subdomains · more numbers · move off single Windows box to auto-scale</p></div>
   <div class="phase"><strong>Phase 3 · Later</strong><p>More languages, simpler phone menus, village voice orders, and a live translation bridge. None of this runs on the demo line today.</p></div>
@@ -85,7 +85,7 @@ flowchart LR
   <div class="actions">
     <a class="button ghost" href="/">Home</a>
     <a class="button" href="/#call">Try live line</a>
-    <a class="button ghost" href="/dashboard" target="_blank" rel="noopener">📊 Open Live Desk (Watch transcript live)</a>
+    <a class="button ghost" href="/dashboard" target="_blank" rel="noopener">📊 Open Live Desk</a>
   </div>
 </section>
 </main>

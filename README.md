@@ -4,7 +4,7 @@ BadaBhai brings voice-first AI guidance to ordinary phones. The hackathon demo c
 
 ## Judge experience
 
-- Public landing page: `/` (project overview, current walkthrough, future vision video, and a scripted call reenactment at `/#call-backup`). `/backup-demo` lets judges choose Hindi or Indian English narration if the temporary line is unavailable.
+- Public landing page: `/`. `/backup-demo` is a Hindi or English walkthrough if the temporary line is unavailable.
 - Public, read-only live dashboard: `/dashboard` (also available at `/operator`). It shows live turns, caller country code only, selected language, call duration, response timings, keypad interruptions, and caller usefulness feedback.
 - Temporary Exotel line: **+91 79 4850 4917**. It is not toll-free or a government helpline. International access and charges depend on the caller's carrier. If the free line is down, use `/backup-demo`.
 

@@ -25,7 +25,6 @@ from pydantic import BaseModel, Field
 load_dotenv(Path(__file__).resolve().parents[1] / '.env')
 from app import meta, voice
 from app.audio import Resampler, chunks
-from app.archive import get_call, list_calls
 from app.live import dashboard
 
 log = logging.getLogger('badabhai')
@@ -207,11 +206,6 @@ def head_health():
                     headers={'content-length': str(len(body))})
 
 
-@app.get('/backup-demo', response_class=HTMLResponse)
-def backup_demo():
-    return Path(__file__).with_name('backup_demo.html').read_text(encoding='utf-8')
-
-
 @app.get('/operator', response_class=HTMLResponse)
 @app.get('/dashboard', response_class=HTMLResponse)
 def operator_dashboard():
@@ -222,72 +216,6 @@ def operator_dashboard():
 _assets_dir = Path(__file__).resolve().parents[1] / 'assets'
 _assets_dir.mkdir(parents=True, exist_ok=True)
 app.mount('/assets', StaticFiles(directory=str(_assets_dir)), name='assets')
-
-
-def require_private_archive_user(value, request):
-    """Private archive stays off the public hostname (Nginx returns 403).
-
-    IIS Windows Auth is not installed on this host, so loopback browser access is
-    allowed without X-IIS-User. Non-loopback still requires that trusted header.
-    """
-    host = request.client.host if request.client else ''
-    if host in ('127.0.0.1', '::1'):
-        return
-    if not value or not value.strip():
-        raise HTTPException(403, 'Private archive requires Windows sign-in through IIS')
-
-
-@app.get('/operator/archive', response_class=HTMLResponse)
-def private_archive(request: Request, x_iis_user: str = Header(default='')):
-    require_private_archive_user(x_iis_user, request)
-    return Path(__file__).with_name('archive.html').read_text(encoding='utf-8')
-
-
-@app.get('/api/private/calls')
-async def private_call_list(request: Request, search: str = '', x_iis_user: str = Header(default='')):
-    require_private_archive_user(x_iis_user, request)
-    if not os.getenv('PGDATABASE'):
-        raise HTTPException(503, 'Private PostgreSQL archive is not configured')
-    try:
-        return {'calls': await list_calls(search)}
-    except Exception as exc:
-        log.warning('Private call list failed (%s)', type(exc).__name__)
-        raise HTTPException(503, 'Call archive is unavailable') from None
-
-
-@app.get('/api/private/calls/{call_sid}')
-async def private_call_detail(call_sid: str, request: Request, x_iis_user: str = Header(default='')):
-    require_private_archive_user(x_iis_user, request)
-    if not os.getenv('PGDATABASE'):
-        raise HTTPException(503, 'Private PostgreSQL archive is not configured')
-    try:
-        call = await get_call(call_sid)
-    except Exception as exc:
-        log.warning('Private call detail failed (%s)', type(exc).__name__)
-        raise HTTPException(503, 'Call archive is unavailable') from None
-    if not call:
-        raise HTTPException(404, 'Call not found')
-    call.pop('recording_base64', None)
-    return call
-
-
-@app.get('/api/private/calls/{call_sid}/recording')
-async def private_call_recording(call_sid: str, request: Request, x_iis_user: str = Header(default='')):
-    require_private_archive_user(x_iis_user, request)
-    if not os.getenv('PGDATABASE'):
-        raise HTTPException(503, 'Private PostgreSQL archive is not configured')
-    try:
-        call = await get_call(call_sid, include_recording=True)
-        data = call.get('recording_base64') if call else None
-        if not data:
-            raise HTTPException(404, 'Recording not found')
-        return Response(base64.b64decode(data), media_type=call.get('recording_content_type') or 'audio/mpeg',
-                        headers={'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff'})
-    except HTTPException:
-        raise
-    except Exception as exc:
-        log.warning('Private recording retrieval failed (%s)', type(exc).__name__)
-        raise HTTPException(503, 'Recording is unavailable') from None
 
 
 @app.get('/api/public-demo-config')
@@ -365,8 +293,6 @@ class Call:
         self.started_at = None
         self.history = []
         self.transcript = []
-        self.usefulness = None
-        self.feedback_available = False
         self.queue = asyncio.Queue(maxsize=3)
         self.playback = asyncio.Event()
         self.playback.set()
@@ -521,11 +447,6 @@ class Call:
                 digit = event.get('dtmf', {}).get('digit')
                 if digit == '9':
                     await self.barge_in('', method='keypad')
-                elif digit in ('7', '8') and self.feedback_available:
-                    self.usefulness = 'helpful' if digit == '7' else 'not_helpful'
-                    self.transcript.append({'role': 'feedback', 'value': self.usefulness,
-                                            'at': datetime.now(timezone.utc).isoformat()})
-                    await self.publish('usefulness', value=self.usefulness)
                 if digit == '1' and not self.queue.full():
                     self.queue.put_nowait(('capabilities', self.language))
                 elif digit == '2' and not self.queue.full():
@@ -724,9 +645,6 @@ class Call:
                     await self.publish('assistant_state', status='complete')
                     await self.publish('performance', stage='turn_complete', key='total_ms',
                                        ms=round((time.perf_counter() - (self.turn_started or started)) * 1000, 1))
-                    # Keep keypad 7/8 available silently for the live dashboard; do not
-                    # interrupt the conversation with a spoken usefulness prompt.
-                    self.feedback_available = True
                 except Exception as exc:
                     log.warning('Answer turn failed (%s); keeping call open', type(exc).__name__)
                     await self.say(RETRY_HI if self.language == 'hi' else RETRY_EN, self.language)

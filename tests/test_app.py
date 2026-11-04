@@ -27,22 +27,20 @@ def test_home_and_operator_routes_serve_their_pages():
         dashboard_page = client.get('/operator')
         public_dashboard = client.get('/dashboard')
         backup_demo = client.get('/backup-demo')
+        closed = client.get('/operator/archive')
     assert landing.status_code == dashboard_page.status_code == public_dashboard.status_code == backup_demo.status_code == 200
     assert 'Good guidance.' in landing.text
+    assert 'What we might pick up next' in landing.text
+    assert 'Nothing from the call is saved' in landing.text
     assert 'PM-KISAN' not in landing.text
     assert 'scrimba.com/explain/guide0gn7k887i' in landing.text
-    assert 'scrimba.com/explain/guide00nc5661r' in landing.text
-    assert 'scrimba.com/explain/guide0rmo5i806' in landing.text
-    assert 'future-potential' in landing.text
-    assert 'call-backup' in landing.text
-    assert 'not a live Exotel recording' in landing.text
-    assert 'One Call, Three Questions' in backup_demo.text
-    assert 'not a live Exotel recording' in backup_demo.text
+    assert 'Backup walkthrough if the line is down' in backup_demo.text
     assert 'guide0pnl4j0rk' in backup_demo.text
-    assert 'data-lang="en"' in backup_demo.text
+    assert 'Recorded' not in backup_demo.text
     assert 'Live conversation' in dashboard_page.text
+    assert 'usefulness' not in dashboard_page.text.casefold()
     assert '/api/live' in dashboard_page.text
-    assert 'token' not in dashboard_page.text.casefold()
+    assert closed.status_code == 404
 
 
 def test_chat_uses_selected_language(monkeypatch):
@@ -136,6 +134,7 @@ def test_voicebot_welcome_language_and_answer(monkeypatch):
                     call.playback.set()
         call = Call(FakeSocket())
         call.sid = 'fake-stream'
+        call.media_ready.set()
         monkeypatch.setattr('app.main.voice.synthesize', lambda *args: bytes(3200))
         responder = AsyncMock(return_value='A short answer.')
         monkeypatch.setattr('app.main.meta.stream_sentences', stream_from_answer(responder))
@@ -214,7 +213,7 @@ def test_answer_failure_keeps_call_open(monkeypatch):
             await call.queue.put(('question', 'First question'))
             await asyncio.sleep(.05)
             assert not worker.done()
-            assert 'Please ask' in call.say.call_args.args[0]
+            assert 'ask that again' in call.say.call_args.args[0]
             await call.queue.put(('question', 'Second question'))
             await asyncio.sleep(.05)
             assert call.history[-1]['content'] == 'It worked.'
