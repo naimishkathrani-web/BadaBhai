@@ -35,6 +35,16 @@ def test_meta_sse_ignores_reasoning_and_streams_text(monkeypatch):
     assert asyncio.run(scenario()) == ['Hello.', 'How can I help?']
 
 
+def test_place_question_uses_meta_web_search():
+    from app.meta import request_for
+    path, payload = request_for([{'role': 'user', 'content': 'What is the address of the Rajkot labour office?'}], 'en')
+    assert path == '/responses'
+    assert payload['tools'] == [{'type': 'web_search'}]
+    chat_path, chat_payload = request_for([{'role': 'user', 'content': 'What is two plus two?'}], 'en')
+    assert chat_path == '/chat/completions'
+    assert chat_payload['reasoning_effort'] == 'minimal'
+
+
 def test_first_sentence_plays_before_generation_finishes(monkeypatch):
     from app.main import Call
     async def scenario():

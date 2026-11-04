@@ -55,7 +55,7 @@ Answers are short and general. BadaBhai expresses uncertainty about changing pro
 ## Models and limitations
 
 - Recognition: Meta `muse-voice-transcribe-1.0` with Hindi and English language bias.
-- Answer generation: Meta `muse-spark-1.3`, streaming responses.
+- Answer generation: Meta `muse-spark-1.3`. Ordinary questions use a short answer. Address and phone questions use the same model with Meta web search.
 - Speech: local Meta MMS Hindi and English voice models.
 - The phone conversation is half-duplex; speaking over an answer is not yet a reliable interrupt. Press 9 to stop playback.
 - One simultaneous call by default. Measure CPU, memory, and latency before increasing capacity.

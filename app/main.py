@@ -28,8 +28,8 @@ from app.audio import Resampler, chunks
 from app.live import dashboard
 
 log = logging.getLogger('badabhai')
-WELCOME_HI = 'नमस्ते, मैं बड़ा भाई हूँ। इस फोन पर हिंदी या अंग्रेज़ी में सवाल पूछिए। अंग्रेज़ी के लिए दो दबाएँ।'
-WELCOME_EN = "Hello, I'm Bada Bhai. Ask me anything in Hindi or English. Press 2 for English, or 3 for Hindi."
+WELCOME_HI = 'नमस्ते, मैं बड़ा भाई हूँ। हिंदी या अंग्रेज़ी में पूछिए। एक दबाएँ तो मैं बताऊँ क्या कर सकता हूँ, दो अंग्रेज़ी के लिए, तीन हिंदी के लिए, और नौ दबाएँ तो मैं रुक जाऊँ।'
+WELCOME_EN = "Hello, I'm Bada Bhai. Ask me anything in Hindi or English. Press 1 for what I can do, 2 for English, 3 for Hindi, or 9 if you want me to stop."
 RETRY_HI = 'माफ़ कीजिए, फिर से पूछिए।'
 RETRY_EN = 'Sorry, please ask that again.'
 CAPABILITIES_EN = 'I explain everyday questions in simple Hindi or English, and I can repeat anything. Press 2 for English, 3 for Hindi, or just talk over me if you want to ask something else.'
@@ -633,6 +633,8 @@ class Call:
                     await self.publish('assistant_state', status='thinking')
                     log.warning('Requesting Meta answer')
                     started = time.perf_counter()
+                    if meta.needs_lookup(model_messages):
+                        await self.say('पता देख रहा हूँ।' if self.language == 'hi' else 'Let me check that.', self.language)
                     self.turn_task = asyncio.create_task(self.speak_answer(model_messages, self.language))
                     try:
                         reply = await self.turn_task
@@ -676,14 +678,17 @@ async def exotel(ws: WebSocket, connection_token: str = ''):
     if os.getenv('CALL_MODE') != 'echo':
         tasks += [asyncio.create_task(call.transcripts(), name='recognition'), asyncio.create_task(call.respond(), name='answer')]
     try:
-        done, _ = await asyncio.wait(tasks, timeout=int(os.getenv('MAX_CALL_SECONDS', '300')),
-                                     return_when=asyncio.FIRST_COMPLETED)
+        opened = time.perf_counter()
+        done, pending = await asyncio.wait(tasks, timeout=int(os.getenv('MAX_CALL_SECONDS', '900')),
+                                           return_when=asyncio.FIRST_COMPLETED)
+        if not done and pending:
+            log.warning('Call reached the app time limit after %.0fs', time.perf_counter() - opened)
         for task in done:
             if not task.cancelled() and task.exception():
                 log.warning('Failed call stage: %s', task.get_name())
             task.result()
     except WebSocketDisconnect:
-        pass
+        log.warning('Phone socket closed')
     except Exception as exc:
         # Avoid logging API responses, transcripts, caller numbers or URL tokens.
         log.warning('Call ended with %s; verify model access/audio configuration', type(exc).__name__)

@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import logging
+import re
 
 import httpx
 import websockets
@@ -14,55 +15,85 @@ def key():
     return value
 
 
-def system_prompt(language):
+LOOKUP_HINTS = (
+    'address', 'phone', 'contact', 'number', 'office', 'helpline', 'where', 'location',
+    'पता', 'नंबर', 'नम्बर', 'दफ्तर', 'कार्यालय', 'फोन', 'संपर्क', 'कहाँ', 'कहां', 'हेल्पलाइन',
+)
+
+
+def needs_lookup(messages):
+    """Public place, address, and phone questions need a live search."""
+    text = next((item.get('content') or '' for item in reversed(messages) if item.get('role') == 'user'), '')
+    folded = text.casefold()
+    if re.search(r'\b(address|phone|helpline|office|location|contact)\b', folded):
+        return True
+    return any(hint in text for hint in LOOKUP_HINTS if not hint.isascii())
+
+
+def system_prompt(language, lookup=False):
     system = (
         'You are BadaBhai, a calm older sibling on an ordinary phone call. '
         f'You use Meta {os.getenv("META_CHAT_MODEL", "muse-spark-1.3")} for answers and Meta speech-to-text to hear the caller. '
         'If asked who built your models, say Meta. '
         f'Reply only in {"simple spoken Hindi in Devanagari" if language == "hi" else "simple spoken Indian English"}. '
-        'Sound like a normal conversation. One or two short sentences, about 25 words. No lists, no labels, no disclaimers. '
-        'Answer the question first. Add one official place to check only when the answer depends on a local office. '
+        'Sound like a normal conversation. Start with the answer. One or two short sentences. No lists and no web addresses. '
         'Never say you are recording, storing, transcribing, or training on the call. '
-        'Do not say you are unsure about ordinary facts you can explain. '
-        'Ask one short question only when you cannot guide without it. '
-        'Never invent account data, phone numbers, or job listings. '
+        'Never invent a street, a phone number, account data, or a job listing. '
         'Do not decide eligibility or give a medical diagnosis. '
         'Do not ask for Aadhaar, OTP, bank numbers, or PINs. '
         'For danger, tell them to contact local emergency help.'
     )
+    if lookup:
+        system += (
+            ' This question needs a public address or phone number. Search before you speak. '
+            'Do not say that you are searching. Speak only the result, in Devanagari when the caller is speaking Hindi. '
+            'First sentence: the office name, the area, and the phone number if you found them. '
+            'If you cannot confirm them, say that in one sentence. Do not guess a street or a number.'
+        )
     return system
 
 
+def _history(messages):
+    return [{'role': item['role'], 'content': item.get('content') or ''} for item in messages[-8:]]
+
+
+def request_for(messages, language):
+    """Ordinary questions stay on a fast chat call. Place and phone questions use Meta web search."""
+    history = _history(messages)
+    model = os.getenv('META_CHAT_MODEL', 'muse-spark-1.3')
+    if needs_lookup(messages):
+        return '/responses', {
+            'model': model,
+            'input': [{'role': 'system', 'content': system_prompt(language, lookup=True)}] + history,
+            'tools': [{'type': 'web_search'}],
+            'reasoning': {'effort': os.getenv('META_LOOKUP_REASONING_EFFORT', 'low')},
+            'max_output_tokens': int(os.getenv('META_LOOKUP_MAX_TOKENS', '2000')),
+            'stream': True,
+        }
+    return '/chat/completions', {
+        'model': model,
+        'messages': [{'role': 'system', 'content': system_prompt(language)}] + history,
+        'reasoning_effort': os.getenv('META_REASONING_EFFORT', 'minimal'),
+        'max_tokens': int(os.getenv('META_MAX_TOKENS', '400')),
+        'stream': True,
+    }
+
+
 async def answer(messages, language):
-    async with httpx.AsyncClient(timeout=35) as client:
-        response = await client.post(
-            os.getenv('META_BASE_URL', 'https://api.meta.ai/v1').rstrip('/') + '/chat/completions',
-            headers={'Authorization': 'Bearer ' + key()},
-            json={'model': os.getenv('META_CHAT_MODEL', 'muse-spark-1.3'),
-                  'messages': [{'role': 'system', 'content': system_prompt(language)}] + messages[-12:],
-                  'reasoning_effort': os.getenv('META_REASONING_EFFORT', 'low'),
-                  'max_tokens': int(os.getenv('META_MAX_TOKENS', '1500'))},
-        )
-        response.raise_for_status()
-        text = response.json()['choices'][0]['message']['content']
-        if not isinstance(text, str) or not text.strip():
-            logging.getLogger('badabhai').warning('Meta returned an empty answer: finish_reason=%s', response.json()['choices'][0].get('finish_reason'))
-            raise RuntimeError('Meta returned no answer text')
-        return text.strip()
+    parts = [sentence async for sentence in stream_sentences(messages, language)]
+    return ' '.join(parts).strip()
 
 
-async def stream_sentences(messages, language):
-    """Yield speakable sentences as Meta generates them, without logging content."""
+async def _events(path, payload):
     from app.streaming import SentenceBuffer
     buffer = SentenceBuffer()
     emitted = False
-    payload = {'model': os.getenv('META_CHAT_MODEL', 'muse-spark-1.3'),
-               'messages': [{'role': 'system', 'content': system_prompt(language)}] + messages[-12:],
-               'reasoning_effort': os.getenv('META_REASONING_EFFORT', 'low'),
-               'max_tokens': int(os.getenv('META_MAX_TOKENS', '1500')), 'stream': True}
-    async with httpx.AsyncClient(timeout=httpx.Timeout(35, connect=10)) as client:
-        async with client.stream('POST', os.getenv('META_BASE_URL', 'https://api.meta.ai/v1').rstrip('/') + '/chat/completions',
-                                 headers={'Authorization': 'Bearer ' + key()}, json=payload) as response:
+    async with httpx.AsyncClient(timeout=httpx.Timeout(45, connect=10)) as client:
+        async with client.stream(
+            'POST', os.getenv('META_BASE_URL', 'https://api.meta.ai/v1').rstrip('/') + path,
+            headers={'Authorization': 'Bearer ' + key(), 'Accept': 'text/event-stream'},
+            json=payload,
+        ) as response:
             response.raise_for_status()
             async for line in response.aiter_lines():
                 if not line.startswith('data:'):
@@ -71,13 +102,17 @@ async def stream_sentences(messages, language):
                 if data == '[DONE]':
                     break
                 event = json.loads(data)
-                if event.get('error'):
+                if event.get('type') in ('response.failed', 'error') or event.get('error'):
                     raise RuntimeError('Meta streaming request failed')
+                pieces = []
+                if event.get('type') == 'response.output_text.delta':
+                    pieces.append(event.get('delta') or '')
                 for choice in event.get('choices', []):
-                    text = choice.get('delta', {}).get('content') or ''
-                    if not isinstance(text, str):
-                        continue
-                    for sentence in buffer.feed(text):
+                    content = choice.get('delta', {}).get('content') or ''
+                    if isinstance(content, str):
+                        pieces.append(content)
+                for piece in pieces:
+                    for sentence in buffer.feed(piece):
                         emitted = True
                         yield sentence
     for sentence in buffer.finish():
@@ -85,6 +120,42 @@ async def stream_sentences(messages, language):
         yield sentence
     if not emitted:
         raise RuntimeError('Meta returned no answer text')
+
+
+def _search_status(sentence):
+    """Drop the model's own 'still searching' lines. The phone already says it is checking."""
+    if any(ch.isdigit() or '०' <= ch <= '९' for ch in sentence):
+        return False
+    folded = sentence.casefold()
+    markers = ('dhoondh', 'looking', 'let me', 'रहा हूँ', 'रही हूँ', 'रुक', 'pakka', 'पक्का', 'suchi', 'सूची')
+    return any(marker in folded or marker in sentence for marker in markers)
+
+
+async def stream_sentences(messages, language):
+    """Yield speakable sentences as Meta generates them, without logging content."""
+    path, payload = request_for(messages, language)
+    try:
+        emitted = False
+        async for sentence in _events(path, payload):
+            if path == '/responses' and _search_status(sentence):
+                continue
+            emitted = True
+            yield sentence
+        if path == '/responses' and not emitted:
+            raise RuntimeError('Meta returned no answer text')
+    except httpx.HTTPStatusError:
+        if path != '/responses':
+            raise
+        logging.getLogger('badabhai').warning('Search answer was rejected; answering without search')
+        fallback = {
+            'model': payload['model'],
+            'messages': payload['input'],
+            'reasoning_effort': os.getenv('META_REASONING_EFFORT', 'minimal'),
+            'max_tokens': int(os.getenv('META_MAX_TOKENS', '400')),
+            'stream': True,
+        }
+        async for sentence in _events('/chat/completions', fallback):
+            yield sentence
 
 
 async def connect_asr(language='hi'):
