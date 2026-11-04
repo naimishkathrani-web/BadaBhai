@@ -26,15 +26,18 @@ def test_home_and_operator_routes_serve_their_pages():
         landing = client.get('/')
         dashboard_page = client.get('/operator')
         public_dashboard = client.get('/dashboard')
-    assert landing.status_code == dashboard_page.status_code == public_dashboard.status_code == 200
+        backup_demo = client.get('/backup-demo')
+    assert landing.status_code == dashboard_page.status_code == public_dashboard.status_code == backup_demo.status_code == 200
     assert 'Good guidance.' in landing.text
     assert 'PM-KISAN' not in landing.text
     assert 'scrimba.com/explain/guide0gn7k887i' in landing.text
     assert 'scrimba.com/explain/guide00nc5661r' in landing.text
-    assert 'scrimba.com/explain/guide0a28vfhf1' in landing.text
+    assert 'scrimba.com/explain/guide0rmo5i806' in landing.text
     assert 'future-potential' in landing.text
     assert 'call-backup' in landing.text
-    assert 'not a recording of a live Exotel call' in landing.text
+    assert 'not a live Exotel recording' in landing.text
+    assert 'One Call, Three Questions' in backup_demo.text
+    assert 'not a live Exotel recording' in backup_demo.text
     assert 'Live conversation' in dashboard_page.text
     assert '/api/live' in dashboard_page.text
     assert 'token' not in dashboard_page.text.casefold()

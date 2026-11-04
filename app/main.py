@@ -110,6 +110,11 @@ def home():
     return Path(__file__).with_name('landing.html').read_text(encoding='utf-8')
 
 
+@app.get('/backup-demo', response_class=HTMLResponse)
+def backup_demo():
+    return Path(__file__).with_name('backup_demo.html').read_text(encoding='utf-8')
+
+
 @app.get('/operator', response_class=HTMLResponse)
 @app.get('/dashboard', response_class=HTMLResponse)
 def operator_dashboard():
