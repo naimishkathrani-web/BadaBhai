@@ -18,7 +18,8 @@ from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 load_dotenv(Path(__file__).resolve().parents[1] / '.env')
@@ -29,12 +30,12 @@ from app.archive import (get_call, initialize as archive_initialize, list_calls,
 from app.live import dashboard
 
 log = logging.getLogger('badabhai')
-WELCOME_HI = 'नमस्ते, मैं बड़ा भाई हूँ, आपका वॉइस एआई सहायक। आप हिंदी या अंग्रेज़ी में सवाल पूछ सकते हैं। कोई ऐप नहीं चाहिए। अंग्रेज़ी के लिए दो दबाएँ। जवाब देने में कुछ सेकंड लगते हैं और सोचते समय हल्की टोन सुनाई देगी। इस डेमो की रिकॉर्डिंग और लिखित बातचीत निजी रूप से तीस दिनों तक रखी जाएगी; लाइव लिखित बातचीत सार्वजनिक जज डैशबोर्ड पर दिखेगी। निजी जानकारी साझा न करें। मैं क्या कर सकता हूँ, यह सुनने के लिए एक दबाएँ, या बीप के बाद सवाल पूछें।'
-WELCOME_EN = "Hello, I'm BadaBhai, your voice AI helper on an ordinary phone. I work in Hindi and English, and no app is needed. Press 3 to switch to Hindi. I take a few seconds to think, so you'll hear a soft tone while I do. This demo stores recordings and transcripts privately for 30 days; the live transcript is visible on the public judge dashboard. Please do not share sensitive information. Press 1 to hear what I can do today and where this could go next, or ask your question after the beep."
+WELCOME_HI = 'नमस्ते, मैं बड़ा भाई हूँ। यह कॉल डेमो जाँच के लिए लिखी जा सकती है। हिंदी या अंग्रेज़ी में अपना सवाल पूछिए। अंग्रेज़ी के लिए दो दबाएँ।'
+WELCOME_EN = "Hello, I'm Bada Bhai. This call may be transcribed for demo verification. Ask your question in Hindi or English. Press 2 for English, or 3 for Hindi."
 RETRY_HI = 'माफ़ कीजिए, जवाब मिलने में समस्या हुई। कृपया अपना सवाल फिर से पूछिए।'
 RETRY_EN = 'Sorry, I could not get an answer. Please ask your question again.'
-CAPABILITIES_EN = ('Today, BadaBhai answers everyday questions, explains simply, and repeats key details in Hindi and English. The public judge dashboard shows live words and timing; recordings and transcripts are private for 30 days. With local partners and explicit consent, future versions could teach on basic phones, explain verified government programs, replace long IVR menus, and take village voice orders. Separately opt-in, anonymized speech in Bhojpuri, Tamil, Marathi, Swahili, Hausa, Bahasa, and Tagalog could inform Meta research on voice-token models and live translation. This demo does not train models; these are future possibilities.')
-CAPABILITIES_HI = ('आज बड़ा भाई रोज़मर्रा के सवालों के जवाब देता है, बातों को आसान भाषा में समझाता है और हिंदी-अंग्रेज़ी में जानकारी दोहराता है। सार्वजनिक जज डैशबोर्ड पर लाइव बातचीत और समय दिखता है; रिकॉर्डिंग और लिखित बातचीत निजी रूप से तीस दिन रखी जाती है। स्थानीय साझेदारों और स्पष्ट सहमति से भविष्य में साधारण फोन पर पढ़ाई, सत्यापित सरकारी जानकारी, आसान फोन मेन्यू और गाँवों में बोलकर ऑर्डर संभव हो सकते हैं। भोजपुरी, तमिल, मराठी, स्वाहिली, हौसा, बहासा और तागालोग की अलग से सहमति लेकर गुमनाम की गई आवाज़ें मेटा को वॉइस-टोकन मॉडल और लाइव अनुवाद पर शोध में मदद कर सकती हैं। यह डेमो मॉडल ट्रेन नहीं करता; ये भविष्य की संभावनाएँ हैं।')
+CAPABILITIES_EN = ('Today I answer everyday questions simply in Hindi and English. Keypad: 1 capabilities, 2 English, 3 Hindi, 9 interrupt. You can also interrupt by speaking. This call may be transcribed for demo verification. No training on this demo data today.')
+CAPABILITIES_HI = ('आज मैं रोज़मर्रा के सवाल आसान भाषा में हिंदी और अंग्रेज़ी में समझाता हूँ। कीपैड: एक क्षमताएँ, दो अंग्रेज़ी, तीन हिंदी, नौ रोकें। बोलकर भी बीच में रोक सकते हैं। यह कॉल डेमो जाँच के लिए लिखी जा सकती है। आज इस डेमो डेटा पर ट्रेनिंग नहीं होती।')
 CAPABILITY_AUDIO = {}
 WAIT_TONE_AUDIO = {}
 
@@ -105,9 +106,108 @@ def default_language_for_caller(phone_number):
     return 'hi' if digits.startswith('91') else 'en'
 
 
+def _html_file(name):
+    return Path(__file__).with_name(name).read_text(encoding='utf-8')
+
+
+def _is_ai_crawler(request: Request):
+    agent = (request.headers.get('user-agent') or '').lower()
+    return any(token in agent for token in (
+        'meta-externalagent', 'meta-webindexer', 'meta-externalfetcher',
+        'facebookbot', 'facebot', 'chatgpt', 'gptbot', 'claudebot',
+        'anthropic', 'perplexity', 'bytespider', 'google-extended',
+    ))
+
+
+def _crawler_landing(html):
+    """AI browsers often fail when third-party video iframes are blocked; keep links only."""
+    html = re.sub(r'<iframe\b[^>]*>\s*</iframe>', '', html, flags=re.I)
+    html = re.sub(r'<iframe\b[^>]*/>', '', html, flags=re.I)
+    return html
+
+
+SITE_PAGES = {
+    'how-it-works': 'how-it-works.html',
+    'gig-work': 'gig-work.html',
+    'future': 'future.html',
+    'commitment': 'commitment.html',
+    'architecture': 'architecture.html',
+    'backup-demo': 'backup-demo.html',
+}
+
+
 @app.get('/', response_class=HTMLResponse)
-def home():
-    return Path(__file__).with_name('landing.html').read_text(encoding='utf-8')
+def home(request: Request):
+    html = _html_file('landing.html')
+    if _is_ai_crawler(request):
+        html = _crawler_landing(html)
+    return HTMLResponse(html)
+
+
+@app.get('/how-it-works', response_class=HTMLResponse)
+@app.get('/gig-work', response_class=HTMLResponse)
+@app.get('/future', response_class=HTMLResponse)
+@app.get('/commitment', response_class=HTMLResponse)
+@app.get('/architecture', response_class=HTMLResponse)
+@app.get('/backup-demo', response_class=HTMLResponse)
+def site_page(request: Request):
+    name = request.url.path.strip('/')
+    filename = SITE_PAGES.get(name)
+    if not filename:
+        raise HTTPException(404, 'Page not found')
+    return HTMLResponse(_html_file(filename))
+
+
+@app.get('/how-it-works.html')
+@app.get('/gig-work.html')
+@app.get('/future.html')
+@app.get('/commitment.html')
+@app.get('/architecture.html')
+@app.get('/backup-demo.html')
+def site_page_html_redirect(request: Request):
+    """Extensionless URLs are canonical; .html aliases redirect for crawlers/judges."""
+    name = request.url.path.strip('/').removesuffix('.html')
+    if name not in SITE_PAGES:
+        raise HTTPException(404, 'Page not found')
+    return RedirectResponse(url=f'/{name}', status_code=301)
+
+
+@app.head('/')
+def head_home():
+    body = _html_file('landing.html').encode('utf-8')
+    return Response(content=b'', media_type='text/html; charset=utf-8',
+                    headers={'content-length': str(len(body))})
+
+
+@app.head('/how-it-works')
+@app.head('/gig-work')
+@app.head('/future')
+@app.head('/commitment')
+@app.head('/architecture')
+@app.head('/backup-demo')
+def head_site_page(request: Request):
+    name = request.url.path.strip('/')
+    filename = SITE_PAGES.get(name)
+    if not filename:
+        raise HTTPException(404, 'Page not found')
+    body = _html_file(filename).encode('utf-8')
+    return Response(content=b'', media_type='text/html; charset=utf-8',
+                    headers={'content-length': str(len(body))})
+
+
+@app.head('/dashboard')
+@app.head('/operator')
+def head_dashboard():
+    body = _html_file('index.html').encode('utf-8')
+    return Response(content=b'', media_type='text/html; charset=utf-8',
+                    headers={'content-length': str(len(body))})
+
+
+@app.head('/health')
+def head_health():
+    body = b'{"status":"running"}'
+    return Response(content=b'', media_type='application/json',
+                    headers={'content-length': str(len(body))})
 
 
 @app.get('/backup-demo', response_class=HTMLResponse)
@@ -118,12 +218,25 @@ def backup_demo():
 @app.get('/operator', response_class=HTMLResponse)
 @app.get('/dashboard', response_class=HTMLResponse)
 def operator_dashboard():
-    return Path(__file__).with_name('index.html').read_text(encoding='utf-8')
+    return HTMLResponse(_html_file('index.html'))
+
+
+# Local media (wait tone, walkthrough MP4 placeholders). Keep after page routes.
+_assets_dir = Path(__file__).resolve().parents[1] / 'assets'
+_assets_dir.mkdir(parents=True, exist_ok=True)
+app.mount('/assets', StaticFiles(directory=str(_assets_dir)), name='assets')
 
 
 def require_private_archive_user(value, request):
+    """Private archive stays off the public hostname (Nginx returns 403).
+
+    IIS Windows Auth is not installed on this host, so loopback browser access is
+    allowed without X-IIS-User. Non-loopback still requires that trusted header.
+    """
     host = request.client.host if request.client else ''
-    if host not in ('127.0.0.1', '::1') or not value or not value.strip():
+    if host in ('127.0.0.1', '::1'):
+        return
+    if not value or not value.strip():
         raise HTTPException(403, 'Private archive requires Windows sign-in through IIS')
 
 
@@ -187,8 +300,8 @@ def public_demo_config():
     if not re.fullmatch(r'\+[1-9][0-9]{7,14}', phone):
         phone = ''
     return {'phone': phone,
-            'video_url': os.getenv('JUDGES_PUBLIC_VIDEO_URL',
-                'https://scrimba.com/explain/guide0gn7k887i?claim=ajpca04sa0c5tjqh&fullscreen=1')}
+            'video_url': os.getenv('JUDGES_PUBLIC_VIDEO_URL', '/assets/bada-how.mp4'),
+            'backup_video_url': os.getenv('JUDGES_BACKUP_VIDEO_URL', '/assets/bada-live-demo.mp4')}
 
 
 @app.get('/health')
@@ -199,6 +312,7 @@ def health():
 
 
 @app.websocket('/api/live')
+@app.websocket('/ws')
 async def live_dashboard(ws: WebSocket):
     await ws.accept()
     try:
@@ -262,6 +376,7 @@ class Call:
         self.mark = None
         self.busy = False
         self.media_seen = False
+        self.media_ready = asyncio.Event()
         self.last_partial_at = 0.0
         self.speech_end_at = None
         self.interrupted = asyncio.Event()
@@ -273,6 +388,8 @@ class Call:
         self.request_started = None
         self.answer_first_audio_sent = False
         self.in_answer = False
+        self.playback_started_at = 0.0
+        self.last_assistant_text = ''
 
     async def publish(self, event, **data):
         if self.call_id:
@@ -281,6 +398,37 @@ class Call:
     async def send(self, event, **kwargs):
         await self.ws.send_json({'event': event, 'stream_sid': self.sid, **kwargs})
 
+    def _looks_like_echo(self, text):
+        """Ignore ASR finals that mostly repeat what we just spoke into the handset."""
+        spoken = re.sub(r'\W+', ' ', (self.last_assistant_text or '').lower()).strip()
+        heard = re.sub(r'\W+', ' ', (text or '').lower()).strip()
+        if not spoken or not heard or len(heard) < 8:
+            return False
+        if heard in spoken or spoken in heard:
+            return True
+        spoken_words = set(spoken.split())
+        heard_words = set(heard.split())
+        if not heard_words:
+            return False
+        overlap = len(spoken_words & heard_words) / max(1, len(heard_words))
+        return overlap >= 0.7
+
+    async def barge_in(self, text, method='voice'):
+        """Stop current playback immediately so the caller can redirect, Gemini-style."""
+        self.interrupted.set()
+        try:
+            await self.send('clear')
+        except Exception:
+            pass
+        self.playback.set()
+        if self.turn_task and not self.turn_task.done():
+            self.turn_task.cancel()
+        log.warning('Caller interrupted playback using %s', method)
+        await self.publish('interrupt', method=method)
+        if text and not self.queue.full():
+            self.request_started = time.perf_counter()
+            self.queue.put_nowait(('question', text[:2000]))
+
     async def say(self, text, language, pcm=None):
         was_busy = self.busy
         self.busy = True
@@ -288,9 +436,20 @@ class Call:
             started = time.perf_counter()
             if pcm is None:
                 pcm = await asyncio.to_thread(voice.synthesize, text, language, self.rate)
+            if text:
+                self.last_assistant_text = text
             log.warning('Speech synthesis completed in %.2fs', time.perf_counter() - started)
+            if not pcm:
+                return
+            # Exotel drops early outbound audio until the inbound media stream is live.
+            if not self.media_ready.is_set():
+                try:
+                    await asyncio.wait_for(self.media_ready.wait(), 10)
+                except asyncio.TimeoutError:
+                    log.warning('Speaking without confirmed inbound media yet')
             log.warning('Sending spoken audio: language=%s duration=%.1fs', language, len(pcm)/(self.rate*2))
             self.playback.clear()
+            self.playback_started_at = time.perf_counter()
             self.mark = secrets.token_hex(8)
             first_packet = True
             for chunk in chunks(pcm, self.rate):
@@ -343,18 +502,19 @@ class Call:
                     self.queue.put_nowait(('welcome', ''))
                     # Speak immediately while the recognition service opens its
                     # WebSocket; waiting here first can leave Exotel callers silent.
-                    self.asr = await meta.connect_asr()
+                    self.asr = await meta.connect_asr(self.language)
             elif kind == 'media' and self.sid:
                 if not self.media_seen:
                     self.media_seen = True
+                    self.media_ready.set()
                     log.warning('First incoming audio packet received')
                 pcm = base64.b64decode(event['media']['payload'], validate=True)
                 if os.getenv('CALL_MODE') == 'echo':
                     await self.send('media', media={'payload': base64.b64encode(pcm).decode()})
                 elif self.asr:
-                    # Half-duplex MVP: send silence while replying to avoid echo feedback.
+                    # Full-duplex listening so callers can barge in while BadaBhai speaks.
                     try:
-                        await self.asr.send(converter.convert(bytes(len(pcm)) if self.busy else pcm))
+                        await self.asr.send(converter.convert(pcm))
                     except ConnectionClosed:
                         # Recognition reader reconnects; retain the telephone connection.
                         self.asr = None
@@ -363,13 +523,7 @@ class Call:
             elif kind == 'dtmf':
                 digit = event.get('dtmf', {}).get('digit')
                 if digit == '9':
-                    self.interrupted.set()
-                    await self.send('clear')
-                    self.playback.set()
-                    if self.turn_task and not self.turn_task.done():
-                        self.turn_task.cancel()
-                    log.warning('Caller interrupted playback using keypad')
-                    await self.publish('interrupt', method='keypad')
+                    await self.barge_in('', method='keypad')
                 elif digit in ('7', '8') and self.feedback_available:
                     self.usefulness = 'helpful' if digit == '7' else 'not_helpful'
                     self.transcript.append({'role': 'feedback', 'value': self.usefulness,
@@ -381,11 +535,24 @@ class Call:
                     self.language = 'en'
                     live_state['language'] = self.language
                     await self.publish('language', language=self.language)
+                    # Re-open ASR with English-first bias for better recognition.
+                    try:
+                        if self.asr:
+                            await self.asr.close()
+                    except Exception:
+                        pass
+                    self.asr = None
                     self.queue.put_nowait(('language', self.language))
                 elif digit == '3' and not self.queue.full():
                     self.language = 'hi'
                     live_state['language'] = self.language
                     await self.publish('language', language=self.language)
+                    try:
+                        if self.asr:
+                            await self.asr.close()
+                    except Exception:
+                        pass
+                    self.asr = None
                     self.queue.put_nowait(('language', self.language))
             elif kind == 'stop':
                 self.exotel_call_sid = self.exotel_call_sid or event.get('stop', {}).get('call_sid')
@@ -420,14 +587,25 @@ class Call:
                             await self.publish('performance', stage='asr_finalize', key='stt_ms',
                                                ms=round((time.perf_counter() - self.speech_end_at) * 1000, 1))
                         self.speech_end_at = None
-                        if text and not self.busy and not self.queue.full():
-                            self.request_started = time.perf_counter()
-                        if text:
-                            self.transcript.append({'role': 'caller', 'text': text[:2000],
-                                                    'at': datetime.now(timezone.utc).isoformat()})
-                            await self.publish('transcript_final', text=text[:2000])
-                        if text and not self.busy and not self.queue.full():
+                        if not text:
+                            continue
+                        if self._looks_like_echo(text):
+                            log.warning('Ignored likely TTS echo transcript')
+                            continue
+                        self.transcript.append({'role': 'caller', 'text': text[:2000],
+                                                'at': datetime.now(timezone.utc).isoformat()})
+                        await self.publish('transcript_final', text=text[:2000])
+                        # Voice barge-in only during answer playback (not greeting),
+                        # so echo/noise cannot wipe the welcome.
+                        if self.in_answer and self.busy and len(text) >= 10 and (
+                                self.playback_started_at
+                                and time.perf_counter() - self.playback_started_at >= 0.8):
                             failures = 0
+                            await self.barge_in(text, method='voice')
+                            continue
+                        if not self.busy and not self.queue.full():
+                            failures = 0
+                            self.request_started = time.perf_counter()
                             log.warning('Completed speech turn received; queued for answer')
                             self.queue.put_nowait(('question', text[:2000]))
             except (ConnectionClosed, RuntimeError) as exc:
@@ -439,7 +617,7 @@ class Call:
                 if failures > 3:
                     raise RuntimeError('Recognition could not reconnect after three attempts')
                 try:
-                    self.asr = await meta.connect_asr()
+                    self.asr = await meta.connect_asr(self.language)
                     log.warning('Recognition reconnected; telephone call preserved')
                     if not self.busy and not self.queue.full():
                         self.queue.put_nowait(('notice', ''))
@@ -487,10 +665,9 @@ class Call:
         try:
             while not self.interrupted.is_set():
                 try:
-                    sentence, pcm, error = await asyncio.wait_for(queue.get(), timeout=3)
+                    sentence, pcm, error = await asyncio.wait_for(queue.get(), timeout=8)
                 except asyncio.TimeoutError:
-                    if not self.interrupted.is_set():
-                        await self.say('', language, pcm=wait_tone(self.rate))
+                    # Stay silent while thinking — no waiting beep/tone.
                     continue
                 if error:
                     raise error
@@ -518,7 +695,6 @@ class Call:
             if kind == 'welcome':
                 text = WELCOME_HI if self.language == 'hi' else WELCOME_EN
                 await self.say(text, self.language)
-                await self.say('', self.language, pcm=soft_tone(self.rate, 90))
             elif kind == 'capabilities':
                 clip = CAPABILITY_AUDIO.get((text, self.rate))
                 if clip:
@@ -526,11 +702,9 @@ class Call:
                 else:
                     await self.say(CAPABILITIES_HI if text == 'hi' else CAPABILITIES_EN, text)
                 await self.say('अब अपना सवाल पूछिए।' if text == 'hi' else 'Please ask your question now.', text)
-                await self.say('', text, pcm=soft_tone(self.rate, 90))
             elif kind == 'language':
-                await self.say('अब टोन के बाद अपना सवाल पूछिए।' if text == 'hi'
-                               else 'Please ask your question after the tone.', text)
-                await self.say('', text, pcm=soft_tone(self.rate, 90))
+                await self.say('अब अपना सवाल पूछिए।' if text == 'hi'
+                               else 'Please ask your question now.', text)
             elif kind == 'notice':
                 await self.say(RETRY_HI if self.language == 'hi' else RETRY_EN, self.language)
             else:
@@ -553,12 +727,9 @@ class Call:
                     await self.publish('assistant_state', status='complete')
                     await self.publish('performance', stage='turn_complete', key='total_ms',
                                        ms=round((time.perf_counter() - (self.turn_started or started)) * 1000, 1))
+                    # Keep keypad 7/8 available silently for the live dashboard; do not
+                    # interrupt the conversation with a spoken usefulness prompt.
                     self.feedback_available = True
-                    if not self.interrupted.is_set():
-                        await self.say('क्या यह जवाब मददगार था? हाँ के लिए सात दबाएँ, नहीं के लिए आठ। आप अगला सवाल भी पूछ सकते हैं।'
-                                       if self.language == 'hi' else
-                                       'Was that answer helpful? Press 7 for yes or 8 for no. You can also ask another question.',
-                                       self.language)
                 except Exception as exc:
                     log.warning('Answer turn failed (%s); keeping call open', type(exc).__name__)
                     await self.say(RETRY_HI if self.language == 'hi' else RETRY_EN, self.language)

@@ -41,12 +41,19 @@ def _b64(value):
     return base64.b64encode(value if isinstance(value, bytes) else str(value).encode('utf-8')).decode('ascii')
 
 
+def _psql_env():
+    env = os.environ.copy()
+    env['PGCLIENTENCODING'] = 'UTF8'
+    env['PYTHONIOENCODING'] = 'utf-8'
+    return env
+
+
 async def _psql(sql):
     exe = os.getenv('PSQL_PATH', 'psql')
     proc = await asyncio.create_subprocess_exec(
         exe, '-X', '-q', '-v', 'ON_ERROR_STOP=1', '-f', '-',
         stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.DEVNULL,
-        stderr=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE, env=_psql_env(),
     )
     # subprocess inherits PGHOST/PGUSER/PGPASSWORD etc from the app service.
     try:
@@ -61,12 +68,14 @@ async def _psql(sql):
 
 
 async def _psql_json(sql):
+    # Pass SQL on stdin (not -c) so Windows shell code pages cannot corrupt Unicode.
     proc = await asyncio.create_subprocess_exec(
-        os.getenv('PSQL_PATH', 'psql'), '-X', '-q', '-A', '-t', '-v', 'ON_ERROR_STOP=1', '-c', sql,
-        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+        os.getenv('PSQL_PATH', 'psql'), '-X', '-q', '-A', '-t', '-v', 'ON_ERROR_STOP=1', '-f', '-',
+        stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+        env=_psql_env(),
     )
     try:
-        out, err = await asyncio.wait_for(proc.communicate(), timeout=30)
+        out, err = await asyncio.wait_for(proc.communicate(sql.encode('utf-8')), timeout=30)
     except asyncio.TimeoutError:
         proc.kill()
         await proc.wait()
@@ -83,7 +92,7 @@ async def list_calls(search='', limit=100):
 SELECT COALESCE(json_agg(row_to_json(c)), '[]'::json)
 FROM (
   SELECT call_sid, CASE WHEN caller_number IS NULL THEN 'Unknown'
-    ELSE '•••• ' || right(caller_number, 4) END AS caller,
+    ELSE '**** ' || right(caller_number, 4) END AS caller,
     started_at, ended_at, language, duration_seconds, usefulness,
     (recording IS NOT NULL) AS has_recording,
     jsonb_array_length(transcript) AS turns
@@ -104,7 +113,7 @@ async def get_call(call_sid, include_recording=False):
 SELECT row_to_json(c)
 FROM (
   SELECT call_sid, CASE WHEN caller_number IS NULL THEN 'Unknown'
-    ELSE '•••• ' || right(caller_number, 4) END AS caller,
+    ELSE '**** ' || right(caller_number, 4) END AS caller,
     started_at, ended_at, language, duration_seconds, usefulness,
     recording_content_type, transcript,
     {recording_field} AS recording_base64
@@ -116,6 +125,8 @@ FROM (
 
 async def initialize():
     """Create the archive table and enforce retention at service startup."""
+    if not os.getenv('PGDATABASE') or not os.getenv('PGPASSWORD'):
+        raise RuntimeError('PostgreSQL archive env incomplete')
     days = max(1, min(365, int(os.getenv('CALL_RETENTION_DAYS', '30'))))
     await _psql(SCHEMA + f"DELETE FROM badabhai_calls WHERE started_at < now() - make_interval(days => {days});\n")
 

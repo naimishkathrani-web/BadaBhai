@@ -1,0 +1,30 @@
+﻿Scrimba walkthrough longevity + local assets
+===========================================
+
+Scrimba "Explain" links are interactive visual walkthroughs (not a single
+downloadable MP4). yt-dlp cannot extract them. They remain playable via
+embed as long as Scrimba hosts the guide and the claim token stays valid
+(typically fine for a hackathon window; treat claim URLs as durable share
+links, not forever archives).
+
+If you later export or screen-capture real MP4s, place them here and the
+site will prefer the local file automatically:
+
+  assets/bada-how.mp4         -> landing + /how-it-works (Video 1)
+  assets/bada-how-hi.mp4      -> optional Hindi capture for Video 1
+  assets/bada-future.mp4      -> /future (Video 2)
+  assets/bada-live-demo.mp4   -> /backup-demo English
+  assets/bada-live-demo-hi.mp4-> /backup-demo Hindi
+
+Current Scrimba claim URLs used by the site:
+
+  How it works (EN):
+    https://scrimba.com/explain/guide0gn7k887i?claim=ajpca04sa0c5tjqh&fullscreen=1
+  How it works (HI):
+    https://scrimba.com/explain/guide0a28vfhf1?claim=51c1jltlsj07lu3a&fullscreen=1
+  Where this could go next (EN):
+    https://scrimba.com/explain/guide00nc5661r?claim=r2o0eani03osu9g1&fullscreen=1
+  Backup live call (EN):
+    https://scrimba.com/explain/guide0pnl4j0rk?claim=assuu7264143hoq2&fullscreen=1
+  Backup live call (HI):
+    https://scrimba.com/explain/guide0rmo5i806?claim=dei03ccs10ob4g1u&fullscreen=1

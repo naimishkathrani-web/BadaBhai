@@ -1,11 +1,20 @@
 .env
 .venv/
+.cache/
 __pycache__/
 .pytest_cache/
 *.wav
 *.log
 tools/
 exotel-url.txt
-
+certs/
+logs/
 runtime/
 !assets/wait-tone.wav
+# Accidental nested clone / local-only junk — never publish
+BadaBhai/
+*.exe
+cloudflared.exe
+server-*.log
+server-error-*.log
+.pg-bootstrap.tmp

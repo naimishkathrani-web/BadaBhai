@@ -6,36 +6,183 @@
 <meta name="theme-color" content="#0A2E22">
 <meta name="description" content="BadaBhai brings practical AI guidance to ordinary phones through voice, in Hindi and English.">
 <title>BadaBhai — AI guidance, one phone call away</title>
-<style>
-:root{color-scheme:light;--forest:#0A2E22;--forest2:#184638;--ink:#18342f;--muted:#6b7b75;--cream:#f5f4ed;--paper:#fffefa;--lime:#D6F57A;--orange:#eea56f;--line:#e5e5da;--shadow:0 24px 70px #12352b18;--serif:Georgia,'Times New Roman',serif;--sans:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--cream);color:var(--ink);font:16px/1.55 var(--sans)}a{color:inherit}button,a{-webkit-tap-highlight-color:transparent}.shell{width:min(1180px,calc(100% - 48px));margin:auto}.nav{height:82px;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;align-items:center;gap:12px;text-decoration:none}.brandmark{width:42px;height:42px;display:grid;place-items:center;border-radius:14px;background:var(--lime);color:var(--forest);font-weight:850;font-size:22px}.brandname{font-size:18px;font-weight:780;letter-spacing:-.04em}.brandhint{display:block;color:#87928c;font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;margin-top:-3px}.navlinks{display:flex;gap:28px;align-items:center;color:#60716b;font-size:13px}.navlinks a{text-decoration:none}.navlinks a:hover{color:var(--forest)}.nav-cta,.button{display:inline-flex;justify-content:center;align-items:center;gap:10px;border:0;border-radius:999px;padding:12px 19px;background:var(--lime);color:var(--forest);font:700 14px var(--sans);text-decoration:none;cursor:pointer;transition:transform .18s,background .18s}.nav-cta:hover,.button:hover{transform:translateY(-2px);background:#e2f5a0}.nav-cta{padding:10px 16px;font-size:12px}.hero{position:relative;isolation:isolate;overflow:hidden;background:var(--forest);color:white;border-radius:26px;min-height:548px;padding:72px 7.1%;display:grid;grid-template-columns:1.2fr .8fr;gap:40px;align-items:center;box-shadow:var(--shadow)}.hero:before{content:"";position:absolute;z-index:-1;width:570px;height:570px;border-radius:50%;right:-155px;top:-180px;background:radial-gradient(circle at 42% 50%,#326d56 0,#1a493d 45%,#14382f 70%,transparent 71%);opacity:.86}.hero:after{content:"";position:absolute;z-index:-1;width:360px;height:360px;border:1px solid #d5eb8524;border-radius:50%;right:60px;bottom:-255px;box-shadow:0 0 0 35px #d5eb850b,0 0 0 72px #d5eb8508}.eyebrow{display:inline-flex;align-items:center;gap:9px;color:var(--lime);font-size:11px;font-weight:750;letter-spacing:.15em;text-transform:uppercase}.eyedot{width:7px;height:7px;border-radius:50%;background:var(--lime);box-shadow:0 0 0 5px #d5eb8520}.hero h1{font:500 clamp(48px,6.2vw,76px)/.99 var(--serif);letter-spacing:-.055em;max-width:650px;margin:24px 0 20px}.hero h1 em{color:var(--lime);font-weight:400}.hero-copy{font-size:17px;color:#d0ddd6;max-width:540px;line-height:1.7;margin:0 0 28px}.hero-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.button.secondary{background:transparent;color:white;border:1px solid #ffffff48}.button.secondary:hover{background:#ffffff12}.hero-note{font-size:11px;color:#adbfba;margin:17px 0 0}.phone-art{position:relative;height:350px;display:grid;place-items:center}.halo{position:absolute;width:290px;height:290px;border:1px solid #d5eb8550;border-radius:50%;box-shadow:0 0 0 28px #d5eb850a,0 0 0 58px #d5eb8508}.phone{position:relative;width:204px;height:322px;padding:10px;border-radius:30px;background:linear-gradient(145deg,#d8e5d2,#738b7a);box-shadow:0 28px 55px #07191577;transform:rotate(5deg)}.phone-screen{height:100%;border-radius:22px;background:linear-gradient(160deg,#f4f1e5,#e9ebde);display:flex;flex-direction:column;align-items:center;padding:17px 14px;color:var(--forest)}.speaker{width:48px;height:5px;border-radius:5px;background:#87998b;margin:1px 0 23px}.screen-logo{width:42px;height:42px;background:var(--forest);color:var(--lime);border-radius:14px;display:grid;place-items:center;font-weight:800;font-size:20px}.wave{display:flex;align-items:center;gap:5px;height:70px;margin:14px 0}.wave i{display:block;width:5px;border-radius:8px;background:#2e7157;height:var(--h);opacity:.86}.screen-label{font-size:9px;text-transform:uppercase;letter-spacing:.14em;color:#75847a}.screen-title{font:17px var(--serif);margin:7px 0 4px}.screen-caption{text-align:center;font-size:10px;color:#718079}.keypad{display:grid;grid-template-columns:repeat(3,20px);gap:7px;margin-top:auto;margin-bottom:7px}.keypad span{width:20px;height:20px;border-radius:50%;background:#d8dfd0;color:#446254;font-size:8px;display:grid;place-items:center}.orbit-tag{position:absolute;background:#fbfbf5;color:var(--forest);box-shadow:0 13px 35px #07191544;border-radius:13px;padding:10px 13px;font-size:11px;font-weight:700}.orbit-tag.one{top:55px;right:-2px}.orbit-tag.two{left:-4px;bottom:55px}.orbit-tag small{display:block;font-size:9px;font-weight:500;color:#728179;margin-top:2px}.trustline{display:flex;justify-content:center;align-items:center;gap:34px;padding:24px 0 38px;color:#62736b;font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:700}.trustline span{display:flex;align-items:center;gap:9px}.trustline b{color:#b5c174;font-size:15px}.section{padding:76px 0}.section-head{display:grid;grid-template-columns:1fr .8fr;gap:50px;align-items:end;margin-bottom:34px}.kicker{font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:#527965;font-weight:800}.section h2{font:500 clamp(35px,4.4vw,53px)/1.08 var(--serif);letter-spacing:-.045em;margin:13px 0 0;max-width:650px}.section-head p{max-width:430px;color:var(--muted);margin:0 0 3px;font-size:14px}.video-shell{background:#152e2b;border-radius:22px;padding:12px;box-shadow:var(--shadow)}.video-frame{position:relative;aspect-ratio:16/8.7;overflow:hidden;border-radius:14px;background:radial-gradient(ellipse at 50% 35%,#315f4d,#183c34 55%,#102a27);display:grid;place-items:center}.video-frame iframe{width:100%;height:100%;border:0;position:absolute;inset:0}.video-placeholder{display:grid;place-items:center;text-align:center;padding:25px;color:white}.play{width:70px;height:70px;border-radius:50%;display:grid;place-items:center;background:var(--lime);color:var(--forest);font-size:25px;padding-left:4px;box-shadow:0 0 0 12px #d5eb8524;margin-bottom:18px}.video-placeholder strong{font:26px var(--serif)}.video-placeholder span{font-size:12px;color:#c8d7cd;margin-top:6px}.video-caption{display:flex;justify-content:space-between;align-items:center;color:#dbe4dc;padding:13px 8px 4px;font-size:12px}.video-caption a{color:var(--lime);text-decoration:none;font-weight:700}.story{background:var(--paper);border:1px solid var(--line);border-radius:23px;padding:40px;display:grid;grid-template-columns:.75fr 1.25fr;gap:45px}.story-intro{border-right:1px solid var(--line);padding-right:34px}.story-intro h2{font:500 39px/1.05 var(--serif);letter-spacing:-.04em;margin:12px 0}.story-intro p{color:var(--muted);font-size:13px}.steps{display:grid;gap:22px}.step{display:grid;grid-template-columns:35px 1fr;gap:13px}.step-no{width:30px;height:30px;border-radius:50%;background:#edf1e3;color:#52735e;display:grid;place-items:center;font-size:11px;font-weight:800}.step h3{font-size:14px;margin:1px 0 4px}.step p{font-size:12px;color:var(--muted);margin:0}.guardrail{margin-top:22px;padding:16px 18px;border-left:3px solid #bdc96d;background:#f4f5eb;border-radius:0 12px 12px 0;font-size:12px;color:#596c61}.benefits{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.benefit{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:23px 22px;min-height:190px}.benefit-icon{width:34px;height:34px;border-radius:11px;background:#edf1df;display:grid;place-items:center;color:#49715b;font-weight:800}.benefit h3{font:21px var(--serif);margin:17px 0 7px}.benefit p{font-size:12px;color:var(--muted);margin:0;line-height:1.65}.future{background:#e9eddf;border-radius:24px;padding:42px 44px;display:grid;grid-template-columns:.8fr 1.2fr;gap:55px;align-items:center}.future h2{font:500 39px/1.07 var(--serif);letter-spacing:-.04em;margin:10px 0}.future p{font-size:13px;color:#65746b;margin:0}.future-list{display:grid;grid-template-columns:1fr 1fr;gap:11px}.future-item{background:#f8f8f1;border:1px solid #dfe4d4;border-radius:13px;padding:15px;font-size:12px;font-weight:700;display:flex;gap:10px;align-items:flex-start}.future-item span{color:#718757}.meta-note{margin-top:20px;padding-top:17px;border-top:1px solid #d4dccd;font-size:11px!important;color:#66766c!important}.call-section{background:var(--forest);color:white;border-radius:24px;padding:42px;display:grid;grid-template-columns:1fr auto;gap:30px;align-items:center}.call-section h2{font:500 39px/1.06 var(--serif);letter-spacing:-.04em;margin:12px 0}.call-section p{font-size:13px;color:#c3d1c7;max-width:630px;margin:0}.call-box{min-width:330px;max-width:390px;text-align:center}.call-status{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--lime);font-weight:800}.call-number{font-size:31px;letter-spacing:.01em;font-weight:780;margin:11px 0 5px}.call-hint{font-size:13px!important;color:#a9bbb0!important}.call-button{margin-top:13px}.call-unavailable{font-size:12px;color:#d5ddd7;background:#21443b;border-radius:13px;padding:14px 17px;max-width:320px}.fineprint{font-size:12px!important;color:#91a99b!important;margin-top:12px!important}.global-section{background:#eff6e9;border-radius:28px;padding:46px;margin:20px 0}.global-future{display:grid;grid-template-columns:.72fr 1.28fr;gap:38px;align-items:start}.global-intro h2{font:500 clamp(34px,4vw,48px)/1.04 var(--serif);letter-spacing:-.045em;margin:12px 0 16px}.global-sub{font-size:13px;color:#64746a;line-height:1.7}.source-links{display:flex;flex-direction:column;gap:5px;margin:12px 0 18px;font-size:10px;color:#63766a}.source-links a,.future-film>a{color:#21664d;text-decoration:none;font-weight:700}.future-film{background:#e3ebdd;border-radius:15px;padding:11px}.future-film-label{font-size:11px;font-weight:750;color:#405b4c;margin:2px 3px 8px}.future-film-frame{aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#163a32}.future-film-frame iframe{width:100%;height:100%;border:0}.future-film>a{display:block;font-size:10px;margin:8px 3px 1px}.future-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.future-card{border:1px solid #dfe7d8;background:#fbfcf8;border-radius:16px;padding:17px;min-height:166px}.future-card>span{display:inline-grid;place-items:center;width:29px;height:29px;border-radius:9px;background:#e8efd9;color:#55764f;font-size:11px;font-weight:800}.future-card h3{font:19px/1.18 var(--serif);margin:11px 0 6px;color:#183a30}.future-card p{font-size:11px;line-height:1.6;color:#69786f;margin:0}.future-disclaimer{border-top:1px solid #d6e0d0;padding-top:13px;margin:14px 2px 0;font-size:10px;color:#65746b}.call-box .call-button{font-size:15px;padding:14px 24px}.call-box .fineprint{line-height:1.55!important}.footer{display:flex;justify-content:space-between;gap:20px;padding:28px 0 35px;color:#78877f;font-size:11px}.footer a{text-decoration:none}.footerlinks{display:flex;gap:18px}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-@media(max-width:1000px){.global-section{padding:32px}.global-future{grid-template-columns:1fr;gap:25px}.global-intro{display:grid;grid-template-columns:1fr 1fr;column-gap:20px;align-items:start}.global-intro .kicker,.global-intro h2{grid-column:1}.global-intro .global-sub,.global-intro .source-links{grid-column:2}.future-film{grid-column:1/-1;max-width:620px}.future-disclaimer{font-size:10px}}@media(max-width:800px){.shell{width:min(100% - 30px,620px)}.nav{height:70px}.navlinks>a:not(.nav-cta){display:none}.hero{grid-template-columns:1fr;min-height:auto;padding:48px 27px 22px;gap:4px}.hero h1{font-size:54px}.hero-copy{font-size:15px}.phone-art{height:310px}.phone{transform:scale(.86) rotate(5deg)}.halo{width:235px;height:235px}.orbit-tag.one{right:8px}.orbit-tag.two{left:4px}.trustline{flex-wrap:wrap;gap:12px 23px;padding:21px 4px 28px;font-size:9px}.section{padding:54px 0}.section-head{grid-template-columns:1fr;gap:14px}.section-head p{font-size:13px}.video-frame{aspect-ratio:16/10}.video-caption{font-size:10px}.story{grid-template-columns:1fr;padding:27px;gap:22px}.story-intro{border:0;border-bottom:1px solid var(--line);padding:0 0 18px}.story-intro h2{font-size:34px}.benefits{grid-template-columns:1fr}.benefit{min-height:0}.benefit h3{margin-top:12px}.future{grid-template-columns:1fr;padding:29px;gap:22px}.future h2{font-size:34px}.future-list{grid-template-columns:1fr}.global-section{padding:25px 20px}.global-intro{display:block}.future-grid{grid-template-columns:1fr}.future-card{min-height:0}.call-section{grid-template-columns:1fr;padding:31px 25px}.call-section h2{font-size:34px}.call-box{text-align:left;min-width:0}.call-number{font-size:25px}.footer{flex-direction:column}.footerlinks{flex-wrap:wrap}}
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition:none!important}}
-</style>
+<link rel="stylesheet" href="/assets/site.css">
 </head>
 <body>
 <div class="shell">
-<header class="nav"><a class="brand" href="#top" aria-label="BadaBhai home"><span class="brandmark">भ</span><span class="brandname">BadaBhai<span class="brandhint">Voice-first AI access</span></span></a><nav class="navlinks" aria-label="Main navigation"><a href="#how">How it works</a><a href="#future-potential">Public benefit</a><a href="#how">Watch the film</a><a class="nav-cta" href="#call" title="No app to install. No smartphone required.">Try the live line <span aria-hidden="true">↗</span></a></nav></header>
-<main id="top">
-<section class="hero" aria-labelledby="hero-title"><div><div class="eyebrow"><span class="eyedot"></span> A Meta AI hackathon project</div><h1 id="hero-title">Good guidance.<br><em>One call away.</em></h1><p class="hero-copy">BadaBhai brings practical AI help to an ordinary phone. Ask naturally in Hindi or English and hear clear, simple explanations and next steps.</p><div class="hero-actions"><a class="button" href="#call">Try the phone demo <span aria-hidden="true">→</span></a><a class="button secondary" href="#how">See how it works <span aria-hidden="true">↓</span></a></div><p class="hero-note">No app to install. No smartphone required. Start with a voice call.</p></div>
-<div class="phone-art" aria-hidden="true"><div class="halo"></div><div class="phone"><div class="phone-screen"><div class="speaker"></div><div class="screen-logo">भ</div><div class="wave"><i style="--h:13px"></i><i style="--h:25px"></i><i style="--h:38px"></i><i style="--h:20px"></i><i style="--h:50px"></i><i style="--h:28px"></i><i style="--h:42px"></i><i style="--h:17px"></i><i style="--h:33px"></i><i style="--h:23px"></i><i style="--h:45px"></i><i style="--h:18px"></i></div><span class="screen-label">BadaBhai is listening</span><span class="screen-title">Namaste. How can I help?</span><span class="screen-caption">Speak naturally · हिन्दी · English</span><div class="keypad"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div></div></div><div class="orbit-tag one">Hindi + English<small>Talk in your own words</small></div><div class="orbit-tag two">Practical guidance<small>Clear steps, simple language</small></div></div></section>
-<div class="trustline" aria-label="Project capabilities"><span><b>✳</b> Ordinary phone access</span><span><b>✳</b> Hindi and English demo</span><span><b>✳</b> Meta AI models</span><span><b>✳</b> Official-source signposting</span></div>
+<header class="nav">
+  <a class="brand" href="/" aria-label="BadaBhai home"><span class="brandmark">भ</span><span class="brandname">BadaBhai<span class="brandhint">Voice-first AI access</span></span></a>
+  <nav class="navlinks" aria-label="Main navigation">
+    <a class="active" href="/" aria-current="page">Home</a>
+    <a href="/how-it-works">The POC</a>
+    <a href="/gig-work">Instant Impact: Jobs</a>
+    <a href="/future">Platform Play</a>
+    <a href="/commitment">My Promise</a>
+    <a href="/architecture">How We Built</a>
+    <a href="/dashboard">Live Desk</a>
+    <a class="nav-cta" href="#call">Try Live Line ↗</a>
+  </nav>
+</header>
 
-<section id="how" class="section"><div class="section-head"><div><span class="kicker">The project in 90 seconds</span><h2>A phone call can make useful AI feel close.</h2></div><p>See how BadaBhai turns a spoken question into a simple explanation, then offers clear next steps.</p></div><div class="video-shell"><div class="video-frame" id="video-frame"><iframe id="video-player" src="https://scrimba.com/explain/guide0gn7k887i?claim=ajpca04sa0c5tjqh&amp;fullscreen=1" title="BadaBhai: How it works now - Narrated walkthrough (90 sec) - English + Hindi" loading="eager" allow="fullscreen; autoplay" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div><div class="video-caption"><span>Hindi + English today · More languages are a future goal</span><a id="video-link" href="https://scrimba.com/explain/guide0gn7k887i?claim=ajpca04sa0c5tjqh&amp;fullscreen=1" target="_blank" rel="noopener noreferrer">Open video in a new tab ↗</a></div></div></section>
+<main>
+<section class="hero" aria-labelledby="hero-title">
+  <div class="eyebrow"><span class="eyedot"></span> A Meta AI hackathon project</div>
+  <h1 id="hero-title">Good guidance.<br><em>One call away.</em></h1>
+  <p class="hero-copy">BadaBhai brings practical AI help to an ordinary phone. Ask naturally in Hindi and English and hear clear, simple explanations and next steps. Works on ordinary phone (no app required). WhatsApp option for those who have it, but not required.</p>
+  <div class="hero-actions">
+    <a class="button" href="#call">Try the phone demo →</a>
+    <a class="button secondary" href="/how-it-works">▶ Watch 90-sec Demo</a>
+  </div>
+</section>
 
-<section id="scenario" class="section"><div class="story"><div class="story-intro"><span class="kicker">A complete guidance moment</span><h2>From question to next step.</h2><p>The demo shows how the assistant handles a real question, asks only what matters, and guides people to clear next steps.</p></div><div><div class="steps"><div class="step"><span class="step-no">01</span><div><h3>Ask in everyday language</h3><p>The caller asks a practical question in Hindi or English using an ordinary phone. No app and no typing are needed.</p></div></div><div class="step"><span class="step-no">02</span><div><h3>Clarify only what matters</h3><p>BadaBhai asks a short follow-up when it needs context, then explains likely next steps in plain language.</p></div></div><div class="step"><span class="step-no">03</span><div><h3>Repeat and offer the official route</h3><p>The caller can ask to repeat key details. The demo shares general information, not personal account data.</p></div></div></div><div class="guardrail"><strong>Built for guidance, not decisions.</strong> The demo shares general information. It does not determine eligibility, access personal records, or claim government endorsement.</div></div></div></section>
-
-<section class="section" id="impact"><div class="section-head"><div><span class="kicker">Why access matters</span><h2>AI should work for the phone people already have.</h2></div><p>Voice can reduce barriers created by device cost, mobile data, reading confidence, app setup and unfamiliar digital services. <a href="https://www.gsma.com/solutions-and-impact/connectivity-for-good/external-affairs/wp-content/uploads/2025/04/Rethinking-Mobile-Phones_Web.pdf" target="_blank" rel="noopener noreferrer">GSMA estimates about 200 million new feature phones sold globally in 2024</a>; <a href="https://telecom.economictimes.indiatimes.com/amp/news/devices/in-depth-indias-feature-phone-market-staring-at-a-dusky-future/118784879" target="_blank" rel="noopener noreferrer">India shipments were about 54 million, attributed to IDC</a>.</p></div><div class="benefits"><article class="benefit"><span class="benefit-icon">01</span><h3>Reach beyond smartphones</h3><p>A call-based interface can bring guided help to feature-phone users and people with limited internet access.</p></article><article class="benefit"><span class="benefit-icon">02</span><h3>Make complex steps clearer</h3><p>People can ask follow-up questions, hear information repeated, and move at their own pace in a familiar conversation.</p></article><article class="benefit"><span class="benefit-icon">03</span><h3>Connect people to answers</h3><p>With approved information sources, guidance can be grounded and routed to verified next steps.</p></article></div></section>
-
-<section class="section global-section" id="future-potential"><div class="global-future"><div class="global-intro"><span class="kicker">Where this could go next · global</span><h2>A starting point.<br>Not an endpoint.</h2><p class="global-sub">Around 200 million feature phones were sold worldwide in 2024. India accounted for about 54 million shipments. These are annual sales estimates, not counts of active users. Voice on an ordinary call could make AI useful beyond smartphone apps and beyond India.</p><p class="source-links"><a href="https://www.gsma.com/solutions-and-impact/connectivity-for-good/external-affairs/wp-content/uploads/2025/04/Rethinking-Mobile-Phones_Web.pdf" target="_blank" rel="noopener noreferrer">Source: GSMA global mobile-phone analysis ↗</a><a href="https://telecom.economictimes.indiatimes.com/amp/news/devices/in-depth-indias-feature-phone-market-staring-at-a-dusky-future/118784879" target="_blank" rel="noopener noreferrer">India shipment estimate attributed to IDC ↗</a></p><div class="future-film"><div class="future-film-label">Watch: Where this could go next · 90 sec</div><div class="future-film-frame"><iframe src="https://scrimba.com/explain/guide00nc5661r?claim=r2o0eani03osu9g1&amp;fullscreen=1" title="Watch: Where this could go next (90 sec)" loading="lazy" allow="fullscreen; autoplay" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div><a href="https://scrimba.com/explain/guide00nc5661r?claim=r2o0eani03osu9g1&amp;fullscreen=1" target="_blank" rel="noopener noreferrer">Open future-potential video ↗</a></div></div><div><div class="future-grid"><article class="future-card"><span>01</span><h3>Explain everyday topics simply</h3><p>Maths, science and how-to guidance on a feature phone, in Hindi, English, Swahili, Bahasa Indonesia and more as each language is validated.</p></article><article class="future-card"><span>02</span><h3>Help governments reach people</h3><p>With verified sources, public agencies could explain program purpose, required documents, deadlines and official helplines in local languages.</p></article><article class="future-card"><span>03</span><h3>Explore better speech models</h3><p>With separate opt-in, strong anonymization and local governance, speech in Bhojpuri, Tamil, Marathi, Swahili, Hausa, Bahasa Indonesia and Tagalog could support research on voice-token models, language control, native prosody and code-switching. This could inform Meta research for more natural multilingual AI, but the demo does not train models or use calls for training.</p></article><article class="future-card"><span>04</span><h3>Replace long enterprise IVR menus</h3><p>Callers could describe an issue such as “My bill seems too high” and reach the right self-service path or staff team. Account changes still require authorization.</p></article><article class="future-card"><span>05</span><h3>Enable voice orders from villages</h3><p>Local marketplaces could take voice orders for groceries or farm supplies and connect them to logistics beyond cities.</p></article><article class="future-card"><span>06</span><h3>Translate live calls</h3><p>Future speech systems could help a farmer speaking Hindi talk with an English-speaking buyer, if accuracy, latency and consent are handled well.</p></article></div><p class="future-disclaimer">These are future possibilities that require approvals, infrastructure, consent and local partnerships. BadaBhai today is an independent hackathon prototype, not a Meta or government service.</p></div></div></section>
-
-<section id="call" class="section"><div class="call-section"><div><span class="eyebrow"><span class="eyedot"></span> Live call experience</span><h2>Try BadaBhai on the phone.</h2><p>India callers start in Hindi; other callers start in English. Press 2 for English, 3 for Hindi, or 1 during the greeting to hear today's capabilities and where this could go next. Ask any everyday question, brainstorm, get simple guidance, or request a repeat. This temporary Exotel number is for hackathon judging, not a government helpline.</p></div><div class="call-box"><div id="call-status" class="call-status">Temporary judge demo line</div><div id="call-number" class="call-number">+91 79 4850 4917</div><p class="call-hint">From a US mobile: +91 79 4850 4917<br>From a US landline: 011 91 79 4850 4917</p><a id="call-button" class="button call-button" href="tel:+917948504917">Call BadaBhai</a><p class="fineprint" id="call-fineprint">Demo infra for judging: Windows Server 2022, single concurrent call. Typical thinking time 3–8 sec while Meta models reason; a soft waiting tone is expected. See the Operator console at /dashboard for live latency breakdown. International calling charges depend on carrier. Live transcript is public; recordings and saved transcripts are private for 30 days. This temporary number is not toll-free.</p></div></div></section>
-</main>
-<section id="call-backup" class="section"><div class="section-head"><div><span class="kicker">Recorded backup · scripted reenactment</span><h2>One call. Three everyday questions.</h2></div><p>Follow Sarla and her daughter through work guidance, a school question, and careful next steps for public benefits. This scripted Hindi-first reenactment is not a live Exotel recording.</p></div><div class="video-shell"><div class="video-frame"><iframe src="https://scrimba.com/explain/guide0rmo5i806?claim=dei03ccs10ob4g1u&amp;fullscreen=1" title="BadaBhai: One Call, Three Questions · backup demo" loading="lazy" allow="fullscreen; autoplay" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div><div class="video-caption"><span>Backup if the temporary Exotel number is unavailable · Hindi narration</span><a href="/backup-demo">Choose Hindi or English ↗</a><a href="https://scrimba.com/explain/guide0rmo5i806?claim=dei03ccs10ob4g1u&amp;fullscreen=1" target="_blank" rel="noopener noreferrer">Open Hindi demo ↗</a></div></div></section>
-<footer class="footer"><span>© BadaBhai · A voice-first AI access prototype</span><div class="footerlinks"><a href="#future-potential">How we handle sources</a><a href="/backup-demo">Recorded call backup</a><a href="/dashboard">Operator console</a></div></footer>
+<div class="trustline" aria-label="Project capabilities">
+  <span><b>✳</b> Ordinary phone access</span>
+  <span><b>✳</b> Hindi and English demo</span>
+  <span><b>✳</b> Meta AI models</span>
+  <span class="tip" title="Answers general questions in 2-3 sentences, asks follow-up only if needed, repeats key info, acknowledges uncertainty, directs to official source when needed."><b>✳</b> General guidance - No personal data - No Aadhaar/OTP<span class="tip-bubble">Answers general questions in 2–3 sentences, asks follow-up only if needed, repeats key info, acknowledges uncertainty, directs to official source when needed.</span></span>
 </div>
+
+<section id="how" class="section">
+  <div class="section-head">
+    <div><span class="kicker">The project in 90 seconds</span><h2>Watch: How it works now (90 sec)</h2></div>
+    <p>Dial the demo line, ask in Hindi or English, see the live dashboard transcript, and use keypad interrupts (1 capabilities, 2 English, 3 Hindi, 9 interrupt).</p>
+  </div>
+  <div class="video-shell">
+    <div class="video-lang" role="group" aria-label="Video language">
+      <button type="button" class="lang-btn active" data-video-lang="en" data-target="video-frame">English</button>
+      <button type="button" class="lang-btn" data-video-lang="hi" data-target="video-frame">हिन्दी</button>
+    </div>
+    <div class="video-frame" id="video-frame" data-video-frame
+      data-mp4="/assets/bada-how.mp4"
+      data-embed-en="https://scrimba.com/explain/guide0gn7k887i?claim=ajpca04sa0c5tjqh&amp;fullscreen=1"
+      data-embed-hi="https://scrimba.com/explain/guide0a28vfhf1?claim=51c1jltlsj07lu3a&amp;fullscreen=1"
+      data-embed="https://scrimba.com/explain/guide0gn7k887i?claim=ajpca04sa0c5tjqh&amp;fullscreen=1"
+      data-title="Watch: How it works now (90 sec)"></div>
+    <div class="video-caption">
+      <span>Video 1 · English / Hindi Scrimba walkthrough · Exotel POTS · Meta STT / Muse Spark / neural Indian TTS</span>
+      <a id="video-link" href="/backup-demo">Backup demo →</a>
+    </div>
+  </div>
+</section>
+
+<section id="scenario" class="section">
+  <div class="story">
+    <div class="story-intro">
+      <span class="kicker">A complete guidance moment</span>
+      <h2>From question to next step.</h2>
+      <p>The demo shows how the assistant handles a real question, asks only what matters, and guides people to clear next steps.</p>
+    </div>
+    <div>
+      <div class="steps">
+        <div class="step"><span class="step-no">01</span><div><h3>Ask in everyday language</h3><p>Call from an ordinary phone. No app and no typing are needed.</p></div></div>
+        <div class="step"><span class="step-no">02</span><div><h3>Clarify only what matters</h3><p>BadaBhai asks a short follow-up only when context is needed.</p></div></div>
+        <div class="step"><span class="step-no">03</span><div><h3>Repeat and offer the official route</h3><p>Key details can be repeated. Guidance stays general — not personal account data.</p></div></div>
+      </div>
+      <div class="guardrail"><strong>Built for guidance, not decisions.</strong> It does not determine eligibility, access personal records, or claim government endorsement.</div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="judge-path">
+  <div class="section-head">
+    <div><span class="kicker">For judges · 5-6 min walkthrough in sequence</span><h2>Watch in sequence</h2></div>
+    <p>Start with the POC, see instant impact with Meta data, then platform vision, commitment, and how we will build with Meta.</p>
+  </div>
+  <div class="cards">
+    <article class="card">
+      <div class="icon">▶</div>
+      <h3>Watch: 90-sec Demo</h3>
+      <p>The call that works today — Exotel POTS (not WebRTC), Meta STT, Muse Spark, Meta TTS, Windows Server 2022, 1 call, waiting tone. Keypad: 1 capabilities, 2 English, 3 Hindi, 9 interrupt.</p>
+      <a class="button" href="/how-it-works">▶ Watch 90-sec Demo</a>
+    </article>
+    <article class="card">
+      <div class="icon">💼</div>
+      <span class="chip">Can be live now with Meta data</span>
+      <h3>Instant Impact: Jobs for Gig Workers</h3>
+      <p>Start: Feature phone call (no app) → BadaBhai asks location (asked today, tower triangulation later with operator tie-ups), preference, qualification → searches public job requirements from Facebook Groups + Instagram Reels (location, date, contact Meta already has). Suggested addition for greater impact (if Meta partners): Add 2 separate WhatsApp numbers — one for gig workers to search jobs by preference, one for employers/contractors to post requirements via voice note in Hindi/Gujarati. This would create a 3rd Meta gig-work finder alongside FB and IG, for people who can’t read or have no data, with both seeker and poster sides. Disclaimer: public posts by individuals, not verified by Meta/BadaBhai, info only, don’t pay for a job, plus govt labour benefits e-Shram.</p>
+      <a class="button" href="/gig-work">💼 See How Gig Workers Find Jobs</a>
+    </article>
+    <article class="card">
+      <div class="icon">🌍</div>
+      <h3>Platform Play</h3>
+      <p>Where this could go next — voice-token models with language control, IVR replacement, village voice orders, live translation, regional languages. Demo does not use calls for training. Future research only with separate opt-in, strong anonymization, PII removal, local governance. Could inform Meta research.</p>
+      <a class="button" href="/future">🌍 See Platform Vision</a>
+    </article>
+    <article class="card">
+      <div class="icon">🙏</div>
+      <h3>My Promise</h3>
+      <p>Ayushman Bharat ₹5 lakh medical insurance — many needy families in Gujarat, UP, Bengal have not heard of it (languages: Gujarati, Bhojpuri, Bengali). Same gap for gig workers on feature phones, not LinkedIn. We will build with MCA/BTech interns learning Meta models on real phone infra. Half-prize pledge if we win.</p>
+      <a class="button" href="/commitment">🙏 My Half-Prize Pledge</a>
+    </article>
+    <article class="card">
+      <div class="icon">🏗️</div>
+      <h3>How We Built</h3>
+      <p>How we built this BadaBhai POC for the Meta Hackathon following its guidelines — Meta multi-models, architecture, responsible AI, no Aadhaar/OTP.</p>
+      <a class="button" href="/architecture">🏗️ How We Built with Meta</a>
+    </article>
+    <article class="card">
+      <div class="icon">📊</div>
+      <h3>Live Desk</h3>
+      <p>Watch the call live — transcript, language detected, STT / Spark / TTS timing. Open this before you dial.</p>
+      <a class="button" href="/dashboard" target="_blank" rel="noopener">📊 Open Live Desk (Watch transcript live)</a>
+    </article>
+  </div>
+</section>
+
+<section id="call" class="section">
+  <div class="call-section">
+    <div class="call-top">
+      <div class="call-copy">
+        <span class="eyebrow"><span class="eyedot"></span> Live call experience</span>
+        <h2>Try BadaBhai on the phone.</h2>
+        <p>Works on ordinary phone (no app required). WhatsApp option for those who have it, but not required. India callers start in Hindi; other callers start in English. Keypad: <strong>1 capabilities, 2 English, 3 Hindi, 9 interrupt</strong>. Ask any everyday question, brainstorm, get simple guidance, or request a repeat. This temporary Exotel number is for hackathon judging, not a government helpline.</p>
+      </div>
+      <div class="call-box">
+        <div id="call-status" class="call-status">Temporary judge demo line</div>
+        <div id="call-number" class="call-number">+91 79 4850 4917</div>
+        <p class="call-hint">From a US mobile: +91 79 4850 4917<br>From a US landline: 011 91 79 4850 4917</p>
+        <div class="call-actions">
+          <a id="call-button" class="button" href="tel:+917948504917">Call BadaBhai</a>
+          <div class="judge-note">For judges: Open dashboard first in new tab, then call number — watch transcript and timings live.</div>
+          <a class="btn-lime" href="/dashboard" target="_blank" rel="noopener">Open live dashboard ↗ - See live transcript</a>
+          <a class="button ghost" href="/backup-demo" style="background:#21443b;color:var(--lime)">Watch backup demo video → /backup-demo</a>
+        </div>
+      </div>
+    </div>
+    <div class="call-privacy" id="call-fineprint">
+      <p><strong>Privacy (hackathon demo only):</strong> Live transcript shown on /dashboard for judges to verify feature-phone call works. Caller phone numbers and identifiers stay hidden. Caller hears in greeting: This call may be transcribed for demo verification. You may interrupt by speaking (or press 9). No training on this demo data today. No recordings stored for training today. Future vision (separate opt-in): With explicit consent (Press 1 to allow anonymized use), transcripts and recordings could go to private archive directly (not public dashboard), with strong anonymization, PII removal, local governance, retained per consent and local data policy, to research better voice-token models for low-resource languages vs Dessa. Demo does not train models today.</p>
+      <p>Demo infra for judging: Windows Server 2022, single concurrent call. Typical thinking time 3–8 sec while Meta models reason. International calling charges depend on carrier. Not a government helpline. Not toll-free. <strong>Exotel free-tier demo line 07948504917 active till ~9 Nov for judging. Credits 423.</strong> If judges cannot dial in, watch the backup live-call demo (English + Hindi) at <a href="/backup-demo">/backup-demo</a> — full call, keypad, and dashboard timings.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="footer">
+  <span>© BadaBhai · A voice-first AI access prototype</span>
+  <div class="footerlinks">
+    <a href="/how-it-works">The POC</a>
+    <a href="/gig-work">Instant Impact</a>
+    <a href="/future">Platform Play</a>
+    <a href="/commitment">My Promise</a>
+    <a href="/architecture">Architecture</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/backup-demo">Backup demo</a>
+    <a href="#call">Try Live</a>
+  </div>
+</footer>
+</div>
+<script src="/assets/video-player.js"></script>
 <script>
-fetch('/api/public-demo-config').then(r=>r.ok?r.json():null).then(config=>{if(!config)return;if(config.video_url){document.getElementById('video-link').href=config.video_url;document.getElementById('video-player').src=config.video_url}if(config.phone){const number=document.getElementById('call-number');number.className='call-number';number.textContent=config.phone;document.getElementById('call-status').textContent='Live demo line';const button=document.getElementById('call-button');button.href='tel:'+config.phone;button.hidden=false;}}).catch(()=>{});
+fetch('/api/public-demo-config').then(r=>r.ok?r.json():null).then(config=>{
+  if(!config)return;
+  if(config.phone){
+    const number=document.getElementById('call-number');
+    number.textContent=config.phone;
+    document.getElementById('call-status').textContent='Live demo line';
+    const button=document.getElementById('call-button');
+    button.href='tel:'+config.phone;
+  }
+}).catch(()=>{});
 </script>
 </body>
 </html>
