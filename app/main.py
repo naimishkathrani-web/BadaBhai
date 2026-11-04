@@ -25,8 +25,8 @@ from app.audio import Resampler, chunks
 from app.live import dashboard
 
 log = logging.getLogger('badabhai')
-WELCOME_HI = 'नमस्ते। मैं बड़ा भाई, आपका ए आई सहायक हूँ। हिंदी के लिए एक दबाएं। पीएम-किसान जानकारी के बाद संदेश के लिए तीन दबाएं।'
-WELCOME_EN = 'For English, press two. Ask in your own words. For a PM-KISAN SMS recap after the answer, press three.'
+WELCOME_HI = 'नमस्ते। मैं बड़ा भाई हूँ, मेटा एआई से चलने वाला आपका एआई सहायक। मैं आपकी कैसे मदद कर सकता हूँ?'
+WELCOME_EN = 'Hello, I’m BadaBhai, your AI assistant powered by Meta. How can I help you today?'
 RETRY_HI = 'माफ़ कीजिए, जवाब मिलने में समस्या हुई। कृपया अपना सवाल फिर से पूछिए।'
 RETRY_EN = 'Sorry, I could not get an answer. Please ask your question again.'
 
@@ -50,6 +50,12 @@ live_state = {'status': 'waiting', 'call_id': None, 'language': None, 'source': 
 def authorized(value):
     token = os.getenv('APP_TOKEN', '')
     return bool(token and value and secrets.compare_digest(value, token))
+
+
+def default_language_for_caller(phone_number):
+    """Choose Hindi for Indian caller IDs and English as the general default."""
+    digits = re.sub(r'\D', '', str(phone_number or ''))
+    return 'hi' if digits.startswith('91') else 'en'
 
 
 @app.get('/', response_class=HTMLResponse)
@@ -209,6 +215,7 @@ class Call:
                 self.sid = start.get('stream_sid') or event.get('stream_sid')
                 self.call_id = secrets.token_hex(4)
                 self.caller_number = start.get('from')
+                self.language = default_language_for_caller(self.caller_number)
                 self.rate = int(start.get('media_format', {}).get('sample_rate', 8000))
                 if not self.sid or self.rate not in (8000, 16000, 24000):
                     raise ValueError('Unsupported audio format')
@@ -414,8 +421,8 @@ class Call:
             kind, text = await self.queue.get()
             self.interrupted.clear()
             if kind == 'welcome':
-                await self.say(WELCOME_HI, 'hi')
-                await self.say(WELCOME_EN, 'en')
+                text = WELCOME_HI if self.language == 'hi' else WELCOME_EN
+                await self.say(text, self.language)
             elif kind == 'language':
                 await self.say('अपना सवाल पूछिए।' if text == 'hi' else 'Please ask your question.', text)
             elif kind == 'notice':
