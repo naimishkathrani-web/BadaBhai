@@ -1,65 +1,54 @@
 # BadaBhai
 
-BadaBhai brings voice-first AI guidance to ordinary phones. The hackathon demo connects an Exotel line to Meta Muse Voice Transcribe, Muse Spark, and local Meta MMS speech. Hindi is the default for caller IDs beginning with `+91`; other callers start in English. The live demo currently supports Hindi and English.
+BadaBhai is voice-first AI guidance on an ordinary phone. No app is required. A caller dials, asks in Hindi or English, and hears a short spoken answer.
 
-## Judge experience
+Live demo: [https://badabhai.shreejientserv.in](https://badabhai.shreejientserv.in)
 
-- Public landing page: `/`. `/backup-demo` is a Hindi or English walkthrough if the temporary line is unavailable.
-- Public, read-only live dashboard: `/dashboard` (also available at `/operator`). It shows live turns, caller country code only, selected language, call duration, response timings, keypad interruptions, and caller usefulness feedback.
-- Temporary Exotel line: **+91 79 4850 4917**. It is not toll-free or a government helpline. International access and charges depend on the caller's carrier. If the free line is down, use `/backup-demo`.
+The application code is under the MIT License. See [LICENSE](LICENSE). Meta's API and the optional MMS voice models keep their own terms.
 
-Live Desk shows the conversation only while a call is open. Calls and words are not saved. The app never asks for Aadhaar, OTPs, bank PINs, or account credentials, and it does not determine personal eligibility.
+## Try the demo
 
-## Local setup on Windows
+- Open [Live Desk](https://badabhai.shreejientserv.in/dashboard), then call **+91 79 4850 4917**. From a US landline, dial **011 91 79 4850 4917**.
+- India numbers start in Hindi. Other numbers start in English.
+- Press **1** for what the call can do, **2** for English, **3** for Hindi, or **9** to interrupt. Speaking over an answer also interrupts it.
+- Words, language, and timings appear only while the call is open. The phone number stays hidden. Nothing from the call is saved.
+- One call at a time. The free Exotel line ends after about three and a half minutes, so ask early. It is not toll-free. If the line is down, open [/backup-demo](https://badabhai.shreejientserv.in/backup-demo). The trial number may stop around 9 November 2026.
 
-Use Python 3.11 or 3.12. Install the existing voice requirements and warm the local MMS models:
+## What a judge should open
+
+- [/](https://badabhai.shreejientserv.in/) — the idea, the 90-second walkthrough, and the phone number.
+- [/how-it-works](https://badabhai.shreejientserv.in/how-it-works) — the proof of concept that runs today.
+- [/future#impact](https://badabhai.shreejientserv.in/future#impact) — what we would build next, starting with nearby public job posts. That helper is not on the call today.
+- [/commitment](https://badabhai.shreejientserv.in/commitment) — if this wins any prize, half goes to a Rajkot and Ahmedabad pilot, official-source scheme explainers, and MCA and BTech interns.
+- [/architecture](https://badabhai.shreejientserv.in/architecture) — how the call is built with Meta.
+
+This is an independent prototype, not a Meta product and not a government service. It does not decide eligibility and it does not ask for Aadhaar, an OTP, or account details.
+
+## Models
+
+- Hearing: Meta `muse-voice-transcribe-1.0`, biased to Hindi and English.
+- Answers: Meta `muse-spark-1.3`. Everyday questions stay short. A public office, address, or phone number uses the same model with Meta web search, and the voice says only what that search found.
+- Speech: an Indian voice speaks the answer on the phone line. Meta MMS Hindi and English models are an optional local fallback and stay under CC-BY-NC-4.0.
+
+Jobs, more Indian languages, scheme explainers, village orders, and live translation are next steps. They are not features of the live call. Today's call is Hindi and English only.
+
+## Run it locally
+
+Use Python 3.11 or 3.12.
 
 ```powershell
-cd D:\Dev\BadaBhai
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-voice.txt
 Copy-Item .env.example .env
 ```
 
-Set `MODEL_API_KEY` and a long random `APP_TOKEN` in the private `.env`. Configure the Exotel connection and, if you want private call archiving, `EXOTEL_API_BASE_URL`, `EXOTEL_API_KEY`, `EXOTEL_API_TOKEN`, `EXOTEL_ACCOUNT_SID`, and PostgreSQL `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, and `PSQL_PATH`. Keep `.env` out of Git.
-
-Start the app with:
+Put `MODEL_API_KEY` and a long random `APP_TOKEN` in `.env`. Keep `.env` out of Git. The phone connection uses the Voicebot URL from `deploy/write-exotel-url.py`. Keep that URL private.
 
 ```powershell
 .\.venv\Scripts\python.exe -m scripts.warmup
 .\start.ps1
 ```
 
-Open `http://127.0.0.1:8000`. The judge dashboard has no app-token prompt. `APP_TOKEN` remains server-side for the Exotel WebSocket and private internal APIs; never put it in browser code.
+Open `http://127.0.0.1:8000`. The public site on this project is Nginx in front of one Uvicorn process, because the call state stays in memory. One call at a time.
 
-## PostgreSQL archive
-
-Calls are not written to a database. Live Desk is a temporary view for the open call and clears when the call ends. PostgreSQL is not required for the demo.
-
-Exotel supplies the call SID in its Voicebot WebSocket events. At call end, BadaBhai requests call details, downloads the signed recording URL when available, then stores the audio bytes and transcript in PostgreSQL. If Exotel API credentials are missing or the recording is unavailable, the transcript is still saved and the archive shows that no recording was captured.
-
-The archive routes expect a trusted `X-IIS-User` header and a loopback connection. Configure IIS Windows Authentication on `/operator/archive` and `/api/private/*`; strip caller-supplied `X-IIS-User`, inject the authenticated Windows identity, and keep the Uvicorn port bound to loopback. Do not make the private API public.
-
-## Exotel and IIS
-
-Use the path-authenticated Voicebot URL produced by `deploy/write-exotel-url.py`; keep the app token private. For IIS, proxy HTTP and WebSocket requests to the loopback Uvicorn service, enable WebSocket forwarding, and expose `/` and `/dashboard` publicly without an app-token prompt. Protect private archive routes with Windows Authentication. Keep only one app process because call state and voice models are in memory, and the demo supports one simultaneous call.
-
-The current number is a temporary Exotel-provided demo line. It is not toll-free or an official service. For production, use a customer-facing number approved for publication and confirm international reachability with Exotel and carriers.
-
-## Call experience and boundaries
-
-The caller hears a language-specific greeting and retention disclosure. Press **1** during the greeting for the capabilities overview, **2** to switch to English, and **9** to interrupt an answer. While Muse Spark is thinking, the assistant plays the soft waiting tone every four seconds. After an answer, callers can press **7** if the guidance helped or **8** if it did not.
-
-Answers are short and general. BadaBhai expresses uncertainty about changing program rules and directs callers to an official source or office. This prototype does not yet connect each country's public-benefit information to a curated, verified knowledge base, so do not present it as an eligibility checker or government service.
-
-## Models and limitations
-
-- Recognition: Meta `muse-voice-transcribe-1.0` with Hindi and English language bias.
-- Answer generation: Meta `muse-spark-1.3`. Ordinary questions use a short answer. Address and phone questions use the same model with Meta web search.
-- Speech: local Meta MMS Hindi and English voice models.
-- The phone conversation is half-duplex; speaking over an answer is not yet a reliable interrupt. Press 9 to stop playback.
-- One simultaneous call by default. Measure CPU, memory, and latency before increasing capacity.
-- The MMS models use CC-BY-NC-4.0 licensing. Review the license before commercial deployment.
-- Future languages, government integrations, IVR replacement, village commerce, low-resource speech research, and live translation are proposals, not current features.
-
-Windows Server deployment guidance is in [DEPLOY_WINDOWS.md](DEPLOY_WINDOWS.md). Continue work from [HANDOFF.md](HANDOFF.md), and see [HACKATHON.md](HACKATHON.md) for judge/demo positioning.
+Deployment notes are in [DEPLOY_WINDOWS.md](DEPLOY_WINDOWS.md). Demo boundaries are in [HACKATHON.md](HACKATHON.md). Third-party terms are in [THIRD_PARTY.md](THIRD_PARTY.md).
