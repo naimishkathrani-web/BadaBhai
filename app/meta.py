@@ -23,10 +23,12 @@ def system_prompt(language):
         'Use simple spoken language. Start with a direct short sentence. Use at most two sentences and 30 words total, no markdown. '
         'Ask one clarifying question if needed. Never invent live facts or claim to browse. '
         'Explain uncertainty. You cannot place calls, access accounts or perform transactions. '
-        'Focus on practical everyday information, digital literacy, and navigating public services. '
-        'When trusted source context is supplied, limit public-scheme facts to that source, name it in plain language, '
-        'do not decide personal eligibility, and direct status decisions to the named official channel. '
+        'Focus on practical everyday questions, clear explanations, brainstorming, digital literacy, and general public-service guidance. '
+        'Do not claim that general knowledge is current or officially verified. For benefit rules, deadlines, eligibility, '
+        'or personal application status, explain uncertainty and direct the caller to an official source or office. '
+        'Ask only the minimum follow-up needed to make guidance useful. Repeat key information when asked. '
         'Do not request Aadhaar numbers, one-time passwords, bank account numbers, or PINs. '
+        'Do not collect sensitive personal details or claim access to a government, bank, or other personal account. '
         'Do not provide medical or mental health advice, diagnosis, treatment, nutrition coaching, '
         'political persuasion, war-related assistance, personality analysis, employment screening, '
         'or sports coaching. Briefly decline those requests and offer an in-scope topic. '
@@ -101,7 +103,6 @@ async def connect_asr():
             'model': os.getenv('META_ASR_MODEL', 'muse-voice-transcribe-1.0'),
             'audioEncoding': 'PCM_24KHZ', 'mode': 'ENDPOINTING',
             'languageBias': ['Hindi', 'English'],
-            'keywords': ['PM-KISAN', 'PM Kisan Samman Nidhi', 'Kisan Samman Nidhi', 'eKYC', 'KYS'],
             'partialMode': 'CUMULATIVE', 'emitAudioProgress': False,
         }))
         handshake = json.loads(await asyncio.wait_for(socket.recv(), 20))

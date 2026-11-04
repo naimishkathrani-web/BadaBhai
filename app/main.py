@@ -2,6 +2,8 @@ import asyncio
 import base64
 import contextlib
 import io
+import math
+import struct
 import json
 import logging
 import os
@@ -9,42 +11,73 @@ import re
 import secrets
 import wave
 import time
+from datetime import datetime, timezone
 from websockets.exceptions import ConnectionClosed
 from pathlib import Path
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel, Field
 
 load_dotenv(Path(__file__).resolve().parents[1] / '.env')
 from app import meta, voice
-from app import benefits, sms
 from app.audio import Resampler, chunks
+from app.archive import (get_call, initialize as archive_initialize, list_calls,
+                         save_call)
 from app.live import dashboard
 
 log = logging.getLogger('badabhai')
-WELCOME_HI = 'नमस्ते। मैं बड़ा भाई हूँ, मेटा एआई से चलने वाला आपका एआई सहायक। मैं आपकी कैसे मदद कर सकता हूँ?'
-WELCOME_EN = 'Hello, I’m BadaBhai, your AI assistant powered by Meta. How can I help you today?'
+WELCOME_HI = 'नमस्ते, मैं बड़ा भाई हूँ, आपका वॉइस एआई सहायक। आप हिंदी या अंग्रेज़ी में सवाल पूछ सकते हैं। जवाब देने में कुछ सेकंड लगते हैं। इस डेमो की रिकॉर्डिंग और बातचीत का लिखित रूप तीस दिनों तक सुरक्षित रखा जाएगा। लाइव लिखित बातचीत सार्वजनिक जज डैशबोर्ड पर दिखाई देगी। निजी जानकारी साझा न करें। मैं क्या कर सकता हूँ, यह सुनने के लिए एक दबाएँ, या बीप के बाद सवाल पूछें।'
+WELCOME_EN = "Hello, I'm BadaBhai, your voice AI helper on an ordinary phone. I work in Hindi and English. I take a few seconds to think. This demo stores call recordings and transcripts privately for 30 days; the live transcript is visible on the public judge dashboard. Please do not share sensitive information. Press 1 to hear what I can do today and future potential, or ask your question after the beep."
 RETRY_HI = 'माफ़ कीजिए, जवाब मिलने में समस्या हुई। कृपया अपना सवाल फिर से पूछिए।'
 RETRY_EN = 'Sorry, I could not get an answer. Please ask your question again.'
+CAPABILITIES_EN = ('Today, BadaBhai answers everyday questions, explains ideas simply, and repeats information in Hindi and English. In future, local-language versions could teach maths and science on feature phones, replace long menus, help remote villages place voice orders, and support local marketplaces and logistics. With consent, transcripts could improve speech models for underrepresented languages. The same technology could translate live calls.')
+CAPABILITIES_HI = ('आज बड़ा भाई रोज़मर्रा के सवालों के जवाब देता है, बातों को आसान बनाता है और हिंदी या अंग्रेज़ी में जानकारी दोहरा सकता है। आगे चलकर स्थानीय भाषा वाले संस्करण साधारण फोन पर गणित-विज्ञान सिखा सकते हैं, लंबे फोन मेन्यू की जगह ले सकते हैं और गाँवों में बोलकर सामान मँगाने में मदद कर सकते हैं। सहमति से मिले लिखित संवाद कम संसाधन वाली भाषाओं की आवाज़ पहचान सुधार सकते हैं। यही तकनीक स्थानीय बाज़ार, लॉजिस्टिक्स और लाइव कॉल अनुवाद में भी मदद कर सकती है।')
+CAPABILITY_AUDIO = {}
+
+
+def soft_tone(rate=8000, duration_ms=180):
+    frames = int(rate * duration_ms / 1000)
+    edge = max(1, int(rate * 0.02))
+    samples = []
+    for i in range(frames):
+        envelope = min(1.0, i / edge, (frames - i) / edge)
+        samples.append(struct.pack('<h', int(1200 * envelope * math.sin(2 * math.pi * 520 * i / rate))))
+    return b''.join(samples)
 
 
 @asynccontextmanager
 async def lifespan(app):
     if os.getenv('PREWARM_VOICES', '0') == '1' and os.getenv('CALL_MODE') != 'echo':
         log.warning('Preparing both voices and welcome audio before accepting calls')
-        for language, text in [('hi', WELCOME_HI), ('en', WELCOME_EN), ('hi', RETRY_HI), ('en', RETRY_EN)]:
+        audio_dir = Path(__file__).resolve().parents[1] / 'runtime' / 'audio'
+        audio_dir.mkdir(parents=True, exist_ok=True)
+        for language, text in [('hi', WELCOME_HI), ('en', WELCOME_EN), ('hi', RETRY_HI), ('en', RETRY_EN),
+                               ('hi', CAPABILITIES_HI), ('en', CAPABILITIES_EN)]:
             for rate in (8000, 16000, 24000):
-                await asyncio.to_thread(voice.synthesize, text, language, rate)
+                pcm = await asyncio.to_thread(voice.synthesize, text, language, rate)
+                if text in (CAPABILITIES_HI, CAPABILITIES_EN):
+                    CAPABILITY_AUDIO[(language, rate)] = pcm
+                    if rate == 8000:
+                        output = io.BytesIO()
+                        with wave.open(output, 'wb') as wav:
+                            wav.setparams((1, 2, rate, 0, 'NONE', 'not compressed'))
+                            wav.writeframes(pcm)
+                        (audio_dir / f'capabilities_{language}.wav').write_bytes(output.getvalue())
         log.warning('Voice startup complete: ready to accept calls')
+    if os.getenv('PGDATABASE'):
+        try:
+            await archive_initialize()
+        except Exception as exc:
+            log.warning('Private PostgreSQL archive could not initialize (%s)', type(exc).__name__)
     yield
 
 
 app = FastAPI(title='BadaBhai', lifespan=lifespan)
 active_calls = 0
-live_state = {'status': 'waiting', 'call_id': None, 'language': None, 'source': None}
+live_state = {'status': 'waiting', 'call_id': None, 'language': None}
 
 
 def authorized(value):
@@ -68,6 +101,65 @@ def operator_dashboard():
     return Path(__file__).with_name('index.html').read_text(encoding='utf-8')
 
 
+def require_private_archive_user(value, request):
+    host = request.client.host if request.client else ''
+    if host not in ('127.0.0.1', '::1') or not value or not value.strip():
+        raise HTTPException(403, 'Private archive requires Windows sign-in through IIS')
+
+
+@app.get('/operator/archive', response_class=HTMLResponse)
+def private_archive(request: Request, x_iis_user: str = Header(default='')):
+    require_private_archive_user(x_iis_user, request)
+    return Path(__file__).with_name('archive.html').read_text(encoding='utf-8')
+
+
+@app.get('/api/private/calls')
+async def private_call_list(request: Request, search: str = '', x_iis_user: str = Header(default='')):
+    require_private_archive_user(x_iis_user, request)
+    if not os.getenv('PGDATABASE'):
+        raise HTTPException(503, 'Private PostgreSQL archive is not configured')
+    try:
+        return {'calls': await list_calls(search)}
+    except Exception as exc:
+        log.warning('Private call list failed (%s)', type(exc).__name__)
+        raise HTTPException(503, 'Call archive is unavailable') from None
+
+
+@app.get('/api/private/calls/{call_sid}')
+async def private_call_detail(call_sid: str, request: Request, x_iis_user: str = Header(default='')):
+    require_private_archive_user(x_iis_user, request)
+    if not os.getenv('PGDATABASE'):
+        raise HTTPException(503, 'Private PostgreSQL archive is not configured')
+    try:
+        call = await get_call(call_sid)
+    except Exception as exc:
+        log.warning('Private call detail failed (%s)', type(exc).__name__)
+        raise HTTPException(503, 'Call archive is unavailable') from None
+    if not call:
+        raise HTTPException(404, 'Call not found')
+    call.pop('recording_base64', None)
+    return call
+
+
+@app.get('/api/private/calls/{call_sid}/recording')
+async def private_call_recording(call_sid: str, request: Request, x_iis_user: str = Header(default='')):
+    require_private_archive_user(x_iis_user, request)
+    if not os.getenv('PGDATABASE'):
+        raise HTTPException(503, 'Private PostgreSQL archive is not configured')
+    try:
+        call = await get_call(call_sid, include_recording=True)
+        data = call.get('recording_base64') if call else None
+        if not data:
+            raise HTTPException(404, 'Recording not found')
+        return Response(base64.b64decode(data), media_type=call.get('recording_content_type') or 'audio/mpeg',
+                        headers={'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff'})
+    except HTTPException:
+        raise
+    except Exception as exc:
+        log.warning('Private recording retrieval failed (%s)', type(exc).__name__)
+        raise HTTPException(503, 'Recording is unavailable') from None
+
+
 @app.get('/api/public-demo-config')
 def public_demo_config():
     # Only deliberately public, non-secret display values belong here.
@@ -76,7 +168,7 @@ def public_demo_config():
         phone = ''
     return {'phone': phone,
             'video_url': os.getenv('JUDGES_PUBLIC_VIDEO_URL',
-                'https://scrimba.com/explain/guide04lf97i2e?claim=j7oakcpcb1jsi5o4&fullscreen=1')}
+                'https://scrimba.com/explain/guide0gn7k887i?claim=ajpca04sa0c5tjqh&fullscreen=1')}
 
 
 @app.get('/health')
@@ -90,10 +182,6 @@ def health():
 async def live_dashboard(ws: WebSocket):
     await ws.accept()
     try:
-        hello = await asyncio.wait_for(ws.receive_json(), timeout=10)
-        if not isinstance(hello, dict) or not authorized(str(hello.get('token', ''))):
-            await ws.close(code=1008)
-            return
         await dashboard.connect(ws)
         await ws.send_json({'event': 'snapshot', **live_state})
         while True:
@@ -116,9 +204,6 @@ async def chat(body: Chat, x_app_token: str = Header(default='')):
         raise HTTPException(401, 'Invalid app token')
     try:
         messages = [{'role': 'user', 'content': body.text}]
-        reference = benefits.reference_for_text(body.text)
-        if reference:
-            messages.insert(0, {'role': 'developer', 'content': reference['model_context']})
         return {'answer': await meta.answer(messages, body.language)}
     except Exception as exc:
         log.warning('Chat failed: %s', type(exc).__name__)
@@ -145,7 +230,12 @@ class Call:
     def __init__(self, ws):
         self.ws, self.asr = ws, None
         self.sid, self.rate, self.language = None, 8000, 'hi'
+        self.exotel_call_sid = None
+        self.started_at = None
         self.history = []
+        self.transcript = []
+        self.usefulness = None
+        self.feedback_available = False
         self.queue = asyncio.Queue(maxsize=3)
         self.playback = asyncio.Event()
         self.playback.set()
@@ -158,13 +248,10 @@ class Call:
         self.turn_task = None
         self.call_id = None
         self.caller_number = None
-        self.source = None
-        self.sms_requested = False
         self.turn_started = None
         self.request_started = None
         self.answer_first_audio_sent = False
         self.in_answer = False
-        self.sms_task = None
 
     async def publish(self, event, **data):
         if self.call_id:
@@ -213,6 +300,8 @@ class Call:
                     raise ValueError('Duplicate start')
                 start = event['start']
                 self.sid = start.get('stream_sid') or event.get('stream_sid')
+                self.exotel_call_sid = start.get('call_sid')
+                self.started_at = datetime.now(timezone.utc)
                 self.call_id = secrets.token_hex(4)
                 self.caller_number = start.get('from')
                 self.language = default_language_for_caller(self.caller_number)
@@ -222,7 +311,7 @@ class Call:
                 converter = Resampler(self.rate, 24000)
                 log.warning('Call audio ready: sample_rate=%d', self.rate)
                 live_state.update({'status': 'connected', 'call_id': self.call_id,
-                                   'language': self.language, 'source': None})
+                                   'language': self.language})
                 await self.publish('call_state', status='connected', language=self.language)
                 if os.getenv('CALL_MODE') != 'echo':
                     self.queue.put_nowait(('welcome', ''))
@@ -254,56 +343,24 @@ class Call:
                     if self.turn_task and not self.turn_task.done():
                         self.turn_task.cancel()
                     log.warning('Caller interrupted playback using keypad')
-                if digit in ('1', '2') and not self.queue.full():
-                    self.language = 'hi' if digit == '1' else 'en'
+                elif digit in ('7', '8') and self.feedback_available:
+                    self.usefulness = 'helpful' if digit == '7' else 'not_helpful'
+                    self.transcript.append({'role': 'feedback', 'value': self.usefulness,
+                                            'at': datetime.now(timezone.utc).isoformat()})
+                    await self.publish('usefulness', value=self.usefulness)
+                if digit == '1' and not self.queue.full():
+                    self.queue.put_nowait(('capabilities', self.language))
+                elif digit == '2' and not self.queue.full():
+                    self.language = 'en'
                     live_state['language'] = self.language
                     await self.publish('language', language=self.language)
                     self.queue.put_nowait(('language', self.language))
-                elif digit == '3':
-                    if (self.source and not self.sms_requested and self.caller_number
-                            and re.fullmatch(r'\+[1-9]\d{7,14}', self.caller_number)):
-                        self.sms_requested = True
-                        await self.publish('sms_state', status='opted_in')
-                        self.sms_task = asyncio.create_task(self.send_recap())
-                    elif self.sms_requested:
-                        await self.publish('sms_state', status='already_requested')
-                    else:
-                        await self.publish('sms_state', status='unavailable')
-                        if not self.queue.full():
-                            self.queue.put_nowait(('sms_notice', ''))
             elif kind == 'stop':
+                self.exotel_call_sid = self.exotel_call_sid or event.get('stop', {}).get('call_sid')
                 await self.publish('call_state', status='ended')
                 live_state.update({'status': 'waiting', 'call_id': None,
-                                   'language': None, 'source': None})
+                                   'language': None})
                 return
-
-    async def send_recap(self):
-        if not self.source or not self.caller_number:
-            return
-        if not sms.ready(self.language):
-            await self.publish('sms_state', status='not_configured')
-            log.warning('Caller opted in to SMS recap, but Exotel/DLT SMS settings are incomplete')
-            if not self.queue.full():
-                self.queue.put_nowait(('sms_setup', ''))
-            return
-        body = self.source['sms_hi' if self.language == 'hi' else 'sms_en']
-        try:
-            status = await sms.send_recap(self.caller_number, self.language, body)
-            if str(status).casefold().startswith('failed'):
-                await self.publish('sms_state', status='failed')
-                log.warning('Exotel did not accept the opt-in SMS recap')
-                if not self.queue.full():
-                    self.queue.put_nowait(('sms_setup', ''))
-            else:
-                await self.publish('sms_state', status='accepted', provider_status=status)
-                log.warning('Opt-in SMS recap accepted by Exotel; delivery is not yet confirmed')
-                if not self.queue.full():
-                    self.queue.put_nowait(('sms_sent', ''))
-        except Exception as exc:
-            await self.publish('sms_state', status='failed')
-            log.warning('Opt-in SMS recap failed (%s)', type(exc).__name__)
-            if not self.queue.full():
-                self.queue.put_nowait(('sms_setup', ''))
 
     async def transcripts(self):
         failures = 0
@@ -334,6 +391,8 @@ class Call:
                         if text and not self.busy and not self.queue.full():
                             self.request_started = time.perf_counter()
                         if text:
+                            self.transcript.append({'role': 'caller', 'text': text[:2000],
+                                                    'at': datetime.now(timezone.utc).isoformat()})
                             await self.publish('transcript_final', text=text[:2000])
                         if text and not self.busy and not self.queue.full():
                             failures = 0
@@ -376,9 +435,8 @@ class Call:
                         await self.publish('performance', stage='first_text',
                                            ms=round((text_ready - started) * 1000, 1))
                     await self.publish('assistant_sentence', text=sentence, language=language)
-                    await self.publish('source', source=(self.source or {}).get('title'),
-                                       url=(self.source or {}).get('url'),
-                                       verified_on=(self.source or {}).get('verified_on'))
+                    self.transcript.append({'role': 'assistant', 'text': sentence,
+                                            'at': datetime.now(timezone.utc).isoformat()})
                     synthesis_started = time.perf_counter()
                     pcm = await asyncio.to_thread(voice.synthesize, sentence, language, self.rate)
                     log.warning('Streamed sentence synthesis took %.2fs', time.perf_counter() - text_ready)
@@ -396,7 +454,12 @@ class Call:
         producer = asyncio.create_task(produce())
         try:
             while not self.interrupted.is_set():
-                sentence, pcm, error = await queue.get()
+                try:
+                    sentence, pcm, error = await asyncio.wait_for(queue.get(), timeout=4)
+                except asyncio.TimeoutError:
+                    if not self.interrupted.is_set():
+                        await self.say('', language, pcm=soft_tone(self.rate))
+                    continue
                 if error:
                     raise error
                 if sentence is None:
@@ -423,32 +486,25 @@ class Call:
             if kind == 'welcome':
                 text = WELCOME_HI if self.language == 'hi' else WELCOME_EN
                 await self.say(text, self.language)
+                await self.say('', self.language, pcm=soft_tone(self.rate, 90))
+            elif kind == 'capabilities':
+                clip = CAPABILITY_AUDIO.get((text, self.rate))
+                if clip:
+                    await self.say('', text, pcm=clip)
+                else:
+                    await self.say(CAPABILITIES_HI if text == 'hi' else CAPABILITIES_EN, text)
+                await self.say('अब अपना सवाल पूछिए।' if text == 'hi' else 'Please ask your question now.', text)
+                await self.say('', text, pcm=soft_tone(self.rate, 90))
             elif kind == 'language':
-                await self.say('अपना सवाल पूछिए।' if text == 'hi' else 'Please ask your question.', text)
+                await self.say('Please ask your question after the tone.', text)
+                await self.say('', text, pcm=soft_tone(self.rate, 90))
             elif kind == 'notice':
                 await self.say(RETRY_HI if self.language == 'hi' else RETRY_EN, self.language)
-            elif kind == 'sms_notice':
-                await self.say('पीएम-किसान जानकारी के बाद संदेश के लिए तीन दबाएं।' if self.language == 'hi'
-                               else 'After PM-KISAN guidance, press three for an SMS recap.', self.language)
-            elif kind == 'sms_setup':
-                await self.say('माफ़ कीजिए, इस डेमो लाइन पर संदेश सेवा अभी तैयार नहीं है।' if self.language == 'hi'
-                               else 'Sorry, SMS is not configured on this demo line yet.', self.language)
-            elif kind == 'sms_sent':
-                await self.say('आधिकारिक लिंक वाला संदेश भेजने के लिए रख दिया है।' if self.language == 'hi'
-                               else 'I have submitted the official link by text.', self.language)
             else:
                 self.busy = True
                 try:
-                    self.source = benefits.reference_for_text(text)
-                    live_state['source'] = self.source['title'] if self.source else None
                     messages = self.history + [{'role': 'user', 'content': text}]
                     model_messages = list(messages)
-                    if self.source:
-                        await self.publish('source', source=self.source['title'], url=self.source['url'],
-                                           verified_on=self.source['verified_on'])
-                        # Place trusted context before the caller question; don't store it in history.
-                        model_messages.insert(len(model_messages) - 1,
-                                              {'role': 'developer', 'content': self.source['model_context']})
                     await self.publish('assistant_state', status='thinking')
                     log.warning('Requesting Meta answer')
                     started = time.perf_counter()
@@ -464,6 +520,11 @@ class Call:
                     await self.publish('assistant_state', status='complete')
                     await self.publish('performance', stage='turn_complete',
                                        ms=round((time.perf_counter() - (self.turn_started or started)) * 1000, 1))
+                    self.feedback_available = True
+                    await self.say('क्या यह जवाब मददगार था? हाँ के लिए सात दबाएँ, नहीं के लिए आठ। आप अगला सवाल भी पूछ सकते हैं।'
+                                   if self.language == 'hi' else
+                                   'Was that answer helpful? Press 7 for yes or 8 for no. You can also ask another question.',
+                                   self.language)
                 except Exception as exc:
                     log.warning('Answer turn failed (%s); keeping call open', type(exc).__name__)
                     await self.say(RETRY_HI if self.language == 'hi' else RETRY_EN, self.language)
@@ -508,8 +569,7 @@ async def exotel(ws: WebSocket, connection_token: str = ''):
         log.warning('Call ended with %s; verify model access/audio configuration', type(exc).__name__)
     finally:
         if call.call_id:
-            live_state.update({'status': 'waiting', 'call_id': None,
-                               'language': None, 'source': None})
+            live_state.update({'status': 'waiting', 'call_id': None, 'language': None})
             await call.publish('call_state', status='ended')
         active_calls -= 1
         for task in tasks:
@@ -517,7 +577,9 @@ async def exotel(ws: WebSocket, connection_token: str = ''):
         await asyncio.gather(*tasks, return_exceptions=True)
         if call.asr:
             await call.asr.close()
-        if call.sms_task:
-            await asyncio.gather(call.sms_task, return_exceptions=True)
+        if call.exotel_call_sid:
+            await save_call(call_sid=call.exotel_call_sid, caller=call.caller_number,
+                            language=call.language, started_at=call.started_at,
+                            transcript=call.transcript, usefulness=call.usefulness)
         with contextlib.suppress(Exception):
             await ws.close()
