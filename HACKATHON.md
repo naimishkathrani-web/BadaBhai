@@ -8,7 +8,7 @@ The demo is not a government service, eligibility decision tool, or personal-acc
 
 ## Demo priorities
 
-1. Open the landing page and play the two narrated videos: how the current call works, then global future potential.
+1. Open the landing page and play the project walkthrough and global future video. Use the clearly labeled scripted Hindi-first call reenactment at `/#call-backup` if the temporary Exotel line is unavailable; it is not a live-call recording.
 2. Place a call to +91 79 4850 4917. India callers start in Hindi; other callers start in English. Press 1 for the capabilities overview; 2 for English; 3 for Hindi.
 3. Ask a simple everyday question such as “Photosynthesis kya hai, simple me samjhao?” Demonstrate a short answer, a clarifying question if needed, and a repeat request.
 4. Open `/dashboard` to show the live transcript, country code, language, STT finalization (`stt_ms`), Spark first text (`spark_ms`), TTS synthesis (`tts_ms`), first audio, total response time, keypad interruption, and caller rating (7/8).

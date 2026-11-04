@@ -7,7 +7,7 @@ The local repository changes are pushed to `main`. Continue from the current `ma
 - Exotel Voicebot streams calls to Meta Muse Voice Transcribe, Muse Spark, and local Meta MMS Hindi/English voices.
 - Caller IDs beginning in `+91` default to Hindi; other caller IDs default to English. Press 2 selects English, 3 Hindi, 1 plays the capabilities overview, 9 interrupts, and 7/8 mark caller usefulness.
 - The public `/dashboard` page has no access-token prompt and displays a read-only live transcript, country code only, language, turn timings, interruptions, and answer usefulness.
-- The public landing page has two narrated video embeds and the temporary Exotel judge number +91 79 4850 4917.
+- The public landing page includes a current walkthrough, a future vision video, and a clearly labeled scripted Hindi-first call reenactment at `/#call-backup`; it is a backup if the temporary Exotel judge line +91 79 4850 4917 is unavailable.
 - Completed-call transcript and Exotel recording bytes are stored in PostgreSQL for 30 days when Postgres and Exotel API credentials are configured.
 - Private `/operator/archive` and `/api/private/*` routes require a trusted `X-IIS-User` header and loopback request. IIS Windows Authentication must protect them, overwrite client-supplied header values, and inject the authenticated Windows identity.
 - Callers are told that the live transcript is public and saved recordings/transcripts are private for 30 days. Do not replace that disclosure with “transcripts are not saved.”

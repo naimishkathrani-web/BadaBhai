@@ -31,7 +31,10 @@ def test_home_and_operator_routes_serve_their_pages():
     assert 'PM-KISAN' not in landing.text
     assert 'scrimba.com/explain/guide0gn7k887i' in landing.text
     assert 'scrimba.com/explain/guide00nc5661r' in landing.text
+    assert 'scrimba.com/explain/guide0a28vfhf1' in landing.text
     assert 'future-potential' in landing.text
+    assert 'call-backup' in landing.text
+    assert 'not a recording of a live Exotel call' in landing.text
     assert 'Live conversation' in dashboard_page.text
     assert '/api/live' in dashboard_page.text
     assert 'token' not in dashboard_page.text.casefold()

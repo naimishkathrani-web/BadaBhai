@@ -11,7 +11,7 @@ cd D:\Apps\BadaBhai
 .\deploy\setup.ps1
 ```
 
-Set the server `.env` values for `MODEL_API_KEY`, `APP_TOKEN`, `JUDGES_PUBLIC_PHONE_E164`, `JUDGES_PUBLIC_VIDEO_URL`, Exotel API access, and PostgreSQL. Keep current keys and app token; never display or commit them. Use the current judge line `+917948504917` and the two Scrimba video links embedded in `app/landing.html`.
+Set the server `.env` values for `MODEL_API_KEY`, `APP_TOKEN`, `JUDGES_PUBLIC_PHONE_E164`, `JUDGES_PUBLIC_VIDEO_URL`, Exotel API access, and PostgreSQL. Keep current keys and app token; never display or commit them. Use the current judge line `+917948504917` and the Scrimba video links embedded in `app/landing.html`, including the scripted Hindi call reenactment backup.
 
 Install PostgreSQL client tools and set `PSQL_PATH` to the installed `psql.exe`. Configure `PGHOST=127.0.0.1`, port, database, a restricted app user, and `PGPASSWORD` in the service environment. The app initializes `badabhai_calls` and enforces 30-day retention. Keep Postgres local/firewalled and do not use a superuser for the app.
 
