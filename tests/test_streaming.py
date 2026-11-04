@@ -36,13 +36,17 @@ def test_meta_sse_ignores_reasoning_and_streams_text(monkeypatch):
 
 
 def test_place_question_uses_meta_web_search():
-    from app.meta import request_for
+    from app.meta import request_for, _lookup_sentences
     path, payload = request_for([{'role': 'user', 'content': 'What is the address of the Rajkot labour office?'}], 'en')
     assert path == '/responses'
     assert payload['tools'] == [{'type': 'web_search'}]
     chat_path, chat_payload = request_for([{'role': 'user', 'content': 'What is two plus two?'}], 'en')
     assert chat_path == '/chat/completions'
     assert chat_payload['reasoning_effort'] == 'minimal'
+    assert _lookup_sentences([
+        'I will look up the office.',
+        'The labour office is at Jilla Seva Sadan and the number is 0281-2474654.',
+    ]) == ['The labour office is at Jilla Seva Sadan and the number is 0281-2474654.']
 
 
 def test_first_sentence_plays_before_generation_finishes(monkeypatch):

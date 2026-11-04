@@ -8,12 +8,11 @@ The demo is not a government service, eligibility decision tool, or personal-acc
 
 ## Demo priorities
 
-1. Open the landing page and play the project walkthrough and global future video. Use the clearly labeled scripted Hindi-first call reenactment at `/#call-backup` if the temporary Exotel line is unavailable; it is not a live-call recording.
-2. Place a call to +91 79 4850 4917. India callers start in Hindi; other callers start in English. Press 1 for the capabilities overview; 2 for English; 3 for Hindi.
-3. Ask a simple everyday question such as “Photosynthesis kya hai, simple me samjhao?” Demonstrate a short answer, a clarifying question if needed, and a repeat request.
-4. Open `/dashboard` to show the live transcript, country code, language, STT finalization (`stt_ms`), Spark first text (`spark_ms`), TTS synthesis (`tts_ms`), first audio, total response time, keypad interruption, and caller rating (7/8).
-5. Open `/operator/archive` only from an authenticated Windows session. Show a completed call, masked caller number, transcript and recording playback.
-6. Explain the limits honestly: one simultaneous call, half-duplex phone interaction, Hindi/English only today, no verified per-country benefit database, and future language/government/IVR/commerce/translation proposals require approval, consent, trusted sources, partnerships, and evaluation.
+1. Open the landing page and the 90-second walkthrough. If the temporary Exotel line is unavailable, use `/backup-demo`.
+2. Open `/dashboard`, then call +91 79 4850 4917. India callers start in Hindi; other callers start in English. Press 1 for what the call can do, 2 for English, 3 for Hindi, or 9 to interrupt.
+3. Ask a simple everyday question such as “Photosynthesis kya hai, simple me samjhao?” Then ask for a public office address early in the call, before the free line’s short cutoff.
+4. On Live Desk, show words, country code, language, timings, and interruptions only while the call is open.
+5. Explain the limits honestly: one simultaneous call, Hindi/English only today, no saved calls, and future ideas are not live features.
 
 ## Impact framing
 

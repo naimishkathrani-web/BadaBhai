@@ -118,7 +118,7 @@ def synthesize_mms(text, language, rate=8000):
 
 @lru_cache(maxsize=64)
 def synthesize(text, language, rate=8000):
-    """Prefer neural Indian edge-tts (Scrimba-like clarity); fall back to Meta MMS."""
+    """Prefer neural Indian edge-tts; fall back to Meta MMS."""
     engine = os.getenv('TTS_ENGINE', 'edge').lower()
     if engine != 'mms':
         try:

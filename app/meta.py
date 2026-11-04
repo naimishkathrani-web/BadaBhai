@@ -17,7 +17,9 @@ def key():
 
 LOOKUP_HINTS = (
     'address', 'phone', 'contact', 'number', 'office', 'helpline', 'where', 'location',
+    'labour', 'labor', 'worker', 'district', 'pata', 'number',
     'पता', 'नंबर', 'नम्बर', 'दफ्तर', 'कार्यालय', 'फोन', 'संपर्क', 'कहाँ', 'कहां', 'हेल्पलाइन',
+    'श्रम', 'जिला',
 )
 
 
@@ -25,7 +27,7 @@ def needs_lookup(messages):
     """Public place, address, and phone questions need a live search."""
     text = next((item.get('content') or '' for item in reversed(messages) if item.get('role') == 'user'), '')
     folded = text.casefold()
-    if re.search(r'\b(address|phone|helpline|office|location|contact)\b', folded):
+    if re.search(r'\b(address|phone|helpline|office|location|contact|labour|labor|worker|district|pata)\b', folded):
         return True
     return any(hint in text for hint in LOOKUP_HINTS if not hint.isascii())
 
@@ -122,26 +124,49 @@ async def _events(path, payload):
         raise RuntimeError('Meta returned no answer text')
 
 
+def _has_phone_or_digit(sentence):
+    return any(ch.isdigit() or '०' <= ch <= '९' for ch in sentence)
+
+
 def _search_status(sentence):
     """Drop the model's own 'still searching' lines. The phone already says it is checking."""
-    if any(ch.isdigit() or '०' <= ch <= '९' for ch in sentence):
+    if _has_phone_or_digit(sentence):
         return False
     folded = sentence.casefold()
-    markers = ('dhoondh', 'looking', 'let me', 'रहा हूँ', 'रही हूँ', 'रुक', 'pakka', 'पक्का', 'suchi', 'सूची')
+    markers = (
+        'dhoondh', 'looking', 'look up', 'let me', 'found a', "i'll open", 'i will open',
+        'check', 'confirm', 'रहा हूँ', 'रही हूँ', 'रुक', 'pakka', 'पक्का', 'suchi', 'सूची',
+        'mil gaya', 'bata raha', 'bata rahi', 'खोल', 'देख',
+    )
     return any(marker in folded or marker in sentence for marker in markers)
+
+
+def _lookup_sentences(sentences):
+    """On the phone, speak only the confirmed place or number, not the search chatter."""
+    kept = [sentence for sentence in sentences if not _search_status(sentence)]
+    with_digits = [sentence for sentence in kept if _has_phone_or_digit(sentence)]
+    if with_digits:
+        return with_digits[-1:]
+    return kept[-1:] if kept else []
 
 
 async def stream_sentences(messages, language):
     """Yield speakable sentences as Meta generates them, without logging content."""
     path, payload = request_for(messages, language)
     try:
+        if path == '/responses':
+            collected = [sentence async for sentence in _events(path, payload)]
+            spoken = _lookup_sentences(collected)
+            if not spoken:
+                raise RuntimeError('Meta returned no answer text')
+            for sentence in spoken:
+                yield sentence
+            return
         emitted = False
         async for sentence in _events(path, payload):
-            if path == '/responses' and _search_status(sentence):
-                continue
             emitted = True
             yield sentence
-        if path == '/responses' and not emitted:
+        if not emitted:
             raise RuntimeError('Meta returned no answer text')
     except httpx.HTTPStatusError:
         if path != '/responses':

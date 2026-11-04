@@ -51,4 +51,6 @@ Put `MODEL_API_KEY` and a long random `APP_TOKEN` in `.env`. Keep `.env` out of 
 
 Open `http://127.0.0.1:8000`. The public site on this project is Nginx in front of one Uvicorn process, because the call state stays in memory. One call at a time.
 
+This POC is hosted on a Windows Server 2022 machine with about 16 GB RAM and no GPU. Meta Voice Transcribe and Muse Spark run in Meta’s cloud. The Indian voice is synthesized on the server, so a short pause before the answer is normal for this demo.
+
 Deployment notes are in [DEPLOY_WINDOWS.md](DEPLOY_WINDOWS.md). Demo boundaries are in [HACKATHON.md](HACKATHON.md). Third-party terms are in [THIRD_PARTY.md](THIRD_PARTY.md).
