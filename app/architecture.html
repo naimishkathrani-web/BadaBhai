@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -14,8 +14,7 @@
   <nav class="navlinks">
     <a href="/">Home</a>
     <a href="/how-it-works">The POC</a>
-    <a href="/gig-work">Instant Impact: Jobs</a>
-    <a href="/future">Platform Play</a>
+    <a href="/future#impact">What's next</a>
     <a href="/commitment">My Promise</a>
     <a class="active" aria-current="page" href="/architecture">How We Built</a>
     <a href="/dashboard">Live Desk</a>
@@ -57,9 +56,9 @@ flowchart LR
   E --> F["Caller hears answer\nKeypad 1/2/3/9"]
   G["Operator Dashboard\nLive transcript\nSTT/Spark/TTS timing"] --- B
   H["Future data layer\nFB Groups + IG Reels + WhatsApp posts\nLocation · Date · Contact\n+ disclaimer"] --- D
-  I["Future voice-token research\nLow-resource languages\nOpt-in · anonymized\nLanguage control"] --- D
+  I["Later\nMore Indian languages\nOnly after a real partner\nNot part of this call"] --- D
   </div>
-  <div class="note-green">Dashboard shows the <strong>live</strong> transcript and timings for judges. Caller phone numbers and identifiers stay hidden. Completed-call recordings and transcripts are stored for demo verification only when archive is configured — not shared, not used for training today. No Aadhaar / OTP / bank PIN collection. No personal account access.</div>
+  <div class="note-green">Live Desk shows the words and timings only while the call is open. Phone numbers stay hidden. The call is not saved. No Aadhaar, OTP, or bank PIN. No personal account access.</div>
 </section>
 
 <section class="section" style="padding-top:0">
@@ -67,10 +66,9 @@ flowchart LR
   <ul class="checklist">
     <li>No Aadhaar / OTP / PIN / bank collection — system prompt blocks these asks</li>
     <li>No personal account access; no eligibility determination · General guidance only</li>
-    <li>Live dashboard for judges; private archive for demo verification when enabled; clear privacy note on landing and greeting</li>
-    <li>General guidance — directs to official helplines; acknowledges uncertainty; no personal data</li>
-    <li>Job-post disclaimer: public posts not verified by Meta or BadaBhai; info only; don’t pay for a job; e-Shram benefits</li>
-    <li><strong>Voice-token:</strong> Demo does not use calls for training. Future research only with separate opt-in, strong anonymization, PII removal, local governance. Could inform Meta research.</li>
+    <li>Live Desk is only a window on the open call. Words are not saved after the call ends.</li>
+    <li>General guidance. For personal rules, it points to an official office.</li>
+    <li>A future job helper would say posts are public and unverified, and not to pay for a job.</li>
     <li>Temporary Exotel number is not toll-free, not a government helpline; international charges depend on carrier · trial till ~9 Nov · backup <a href="/backup-demo">/backup-demo</a></li>
     <li>1 concurrent call + 3–8 sec thinking disclosed with waiting tone — latency is not hidden</li>
     <li>Works on ordinary phone (no app required). WhatsApp option for those who have it, but not required.</li>
@@ -82,7 +80,7 @@ flowchart LR
   <div class="phase"><strong>Phase 0 · POC today</strong><p>Exotel trial 07948504917 (active till ~9 Nov; Credits 423) · FastAPI on Windows Server 2022 · Meta STT / Muse Spark 1.1 / TTS · Hindi/English generic Q&amp;A · feature-phone call path · 1 call · live dashboard · backup video at /backup-demo</p></div>
   <div class="phase"><strong>Phase 1 · Immediate (0–3 months)</strong><p>FB Groups + IG Reels public job index + WhatsApp seeker/poster numbers · Rajkot &amp; Ahmedabad pilot · MCA/BTech interns · half-prize investment · disclaimers + e-Shram benefits · location asked today; tower triangulation later with operator tie-ups</p></div>
   <div class="phase"><strong>Phase 2 · Regional scale (3–9 months)</strong><p>Ayushman / PM-KISAN / e-Shram explainers in Gujarati, Tamil, Bengali, Bhojpuri with official sources · more STT/TTS languages · state subdomains · more numbers · move off single Windows box to auto-scale</p></div>
-  <div class="phase"><strong>Phase 3 · Platform (9–24 months)</strong><p>Consented anonymized telephone-grade voice for low-resource languages · better voice-token model with language control · Demo does not use calls for training. Future research only with separate opt-in, strong anonymization, PII removal, local governance. Could inform Meta research. · enterprise IVR replacement · village voice orders + logistics · live translation bridges</p></div>
+  <div class="phase"><strong>Phase 3 · Later</strong><p>More languages, simpler phone menus, village voice orders, and a live translation bridge. None of this runs on the demo line today.</p></div>
   <div class="warn" style="background:#eef3e6;color:#405b4c">Phases require approvals, partnerships, consent, and infrastructure. Independent prototype — not a Meta or government service.</div>
   <div class="actions">
     <a class="button ghost" href="/">Home</a>
@@ -96,8 +94,7 @@ flowchart LR
   <span>© BadaBhai · Independent hackathon prototype</span>
   <div class="footerlinks">
     <a href="/how-it-works">The POC</a>
-    <a href="/gig-work">Instant Impact</a>
-    <a href="/future">Platform Play</a>
+    <a href="/future#impact">What's next</a>
     <a href="/commitment">My Promise</a>
     <a href="/architecture">Architecture</a>
     <a href="/dashboard">Dashboard</a>

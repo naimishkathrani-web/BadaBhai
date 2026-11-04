@@ -13,13 +13,13 @@ cd D:\Apps\BadaBhai
 
 Set the server `.env` values for `MODEL_API_KEY`, `APP_TOKEN`, `JUDGES_PUBLIC_PHONE_E164`, `JUDGES_PUBLIC_VIDEO_URL`, Exotel API access, and PostgreSQL. Keep current keys and app token; never display or commit them. Use the current judge line `+917948504917` and the Scrimba video links embedded in `app/landing.html`, including the scripted Hindi call reenactment backup.
 
-Install PostgreSQL client tools and set `PSQL_PATH` to the installed `psql.exe`. Configure `PGHOST=127.0.0.1`, port, database, a restricted app user, and `PGPASSWORD` in the service environment. The app initializes `badabhai_calls` and enforces 30-day retention. Keep Postgres local/firewalled and do not use a superuser for the app.
+PostgreSQL is not required. The running demo does not save calls.
 
 ## 2. Local service check
 
 Start one Uvicorn instance on loopback, port 8000, using the repository's `start.ps1`/`deploy\run-server.ps1` scripts. Wait for local voice warmup to finish. Open `http://127.0.0.1:8000/`, `/dashboard`, and `/operator/archive` locally. The public dashboard no longer needs an app-token prompt. The archive must remain closed unless the trusted IIS Windows-auth header is present.
 
-Test the audio path with a real Exotel call after the server is running: +91 callers start in Hindi; other callers start in English. Key 1 plays the capabilities overview, key 2 selects English, key 3 selects Hindi, key 9 interrupts, and keys 7/8 rate answer usefulness. The greeting discloses public live transcript visibility and private 30-day archive retention.
+Test the audio path with a real Exotel call after the server is running: +91 callers start in Hindi; other callers start in English. Key 1 plays what the call can do, key 2 selects English, key 3 selects Hindi, and key 9 interrupts. The greeting is short and does not mention recording.
 
 ## 3. IIS reverse proxy and certificate
 
@@ -33,7 +33,7 @@ The DNS record, public route, IIS site binding and certificate are server-side t
 
 ## 4. Archive requirements
 
-Completed calls are archived when Exotel provides `call_sid`, `EXOTEL_API_KEY`, `EXOTEL_API_TOKEN`, `EXOTEL_ACCOUNT_SID`, and PostgreSQL is configured. The server requests Exotel Call Details and downloads the signed recording when available; transcripts are still saved if the recording lookup fails. Confirm a real call appears in the private archive with a transcript and playable recording. Do not infer that an Exotel dashboard recording is in PostgreSQL until that check passes.
+The app does not download or store the call when it ends. Confirm Live Desk shows words during the call and returns to waiting when the call ends.
 
 The archive UI masks caller numbers, supports filtering by full number/call ID, and opens each transcript and recording. The public live dashboard shows no full phone number. Purge is driven by `CALL_RETENTION_DAYS=30` at service startup and after completed calls.
 

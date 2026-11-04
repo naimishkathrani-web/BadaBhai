@@ -25,17 +25,16 @@ from pydantic import BaseModel, Field
 load_dotenv(Path(__file__).resolve().parents[1] / '.env')
 from app import meta, voice
 from app.audio import Resampler, chunks
-from app.archive import (get_call, initialize as archive_initialize, list_calls,
-                         save_call)
+from app.archive import get_call, list_calls
 from app.live import dashboard
 
 log = logging.getLogger('badabhai')
-WELCOME_HI = 'नमस्ते, मैं बड़ा भाई हूँ। यह कॉल डेमो जाँच के लिए लिखी जा सकती है। हिंदी या अंग्रेज़ी में अपना सवाल पूछिए। अंग्रेज़ी के लिए दो दबाएँ।'
-WELCOME_EN = "Hello, I'm Bada Bhai. This call may be transcribed for demo verification. Ask your question in Hindi or English. Press 2 for English, or 3 for Hindi."
-RETRY_HI = 'माफ़ कीजिए, जवाब मिलने में समस्या हुई। कृपया अपना सवाल फिर से पूछिए।'
-RETRY_EN = 'Sorry, I could not get an answer. Please ask your question again.'
-CAPABILITIES_EN = ('Today I answer everyday questions simply in Hindi and English. Keypad: 1 capabilities, 2 English, 3 Hindi, 9 interrupt. You can also interrupt by speaking. This call may be transcribed for demo verification. No training on this demo data today.')
-CAPABILITIES_HI = ('आज मैं रोज़मर्रा के सवाल आसान भाषा में हिंदी और अंग्रेज़ी में समझाता हूँ। कीपैड: एक क्षमताएँ, दो अंग्रेज़ी, तीन हिंदी, नौ रोकें। बोलकर भी बीच में रोक सकते हैं। यह कॉल डेमो जाँच के लिए लिखी जा सकती है। आज इस डेमो डेटा पर ट्रेनिंग नहीं होती।')
+WELCOME_HI = 'नमस्ते, मैं बड़ा भाई हूँ। इस फोन पर हिंदी या अंग्रेज़ी में सवाल पूछिए। अंग्रेज़ी के लिए दो दबाएँ।'
+WELCOME_EN = "Hello, I'm Bada Bhai. Ask me anything in Hindi or English. Press 2 for English, or 3 for Hindi."
+RETRY_HI = 'माफ़ कीजिए, फिर से पूछिए।'
+RETRY_EN = 'Sorry, please ask that again.'
+CAPABILITIES_EN = 'I explain everyday questions in simple Hindi or English, and I can repeat anything. Press 2 for English, 3 for Hindi, or just talk over me if you want to ask something else.'
+CAPABILITIES_HI = 'मैं रोज़मर्रा के सवाल आसान हिंदी या अंग्रेज़ी में समझाता हूँ, और दोहरा भी सकता हूँ। अंग्रेज़ी के लिए दो दबाएँ, या बीच में बोलकर नया सवाल पूछें।'
 CAPABILITY_AUDIO = {}
 WAIT_TONE_AUDIO = {}
 
@@ -82,11 +81,7 @@ async def lifespan(app):
                             wav.writeframes(pcm)
                         (audio_dir / f'capabilities_{language}.wav').write_bytes(output.getvalue())
         log.warning('Voice startup complete: ready to accept calls')
-    if os.getenv('PGDATABASE'):
-        try:
-            await archive_initialize()
-        except Exception as exc:
-            log.warning('Private PostgreSQL archive could not initialize (%s)', type(exc).__name__)
+    # Calls are not saved. The live desk shows words only while a call is open.
     yield
 
 
@@ -128,7 +123,6 @@ def _crawler_landing(html):
 
 SITE_PAGES = {
     'how-it-works': 'how-it-works.html',
-    'gig-work': 'gig-work.html',
     'future': 'future.html',
     'commitment': 'commitment.html',
     'architecture': 'architecture.html',
@@ -144,8 +138,13 @@ def home(request: Request):
     return HTMLResponse(html)
 
 
+@app.get('/gig-work')
+@app.get('/gig-work.html')
+def gig_work_redirect():
+    return RedirectResponse('/future#impact', status_code=302)
+
+
 @app.get('/how-it-works', response_class=HTMLResponse)
-@app.get('/gig-work', response_class=HTMLResponse)
 @app.get('/future', response_class=HTMLResponse)
 @app.get('/commitment', response_class=HTMLResponse)
 @app.get('/architecture', response_class=HTMLResponse)
@@ -159,7 +158,6 @@ def site_page(request: Request):
 
 
 @app.get('/how-it-works.html')
-@app.get('/gig-work.html')
 @app.get('/future.html')
 @app.get('/commitment.html')
 @app.get('/architecture.html')
@@ -180,7 +178,6 @@ def head_home():
 
 
 @app.head('/how-it-works')
-@app.head('/gig-work')
 @app.head('/future')
 @app.head('/commitment')
 @app.head('/architecture')
@@ -782,9 +779,5 @@ async def exotel(ws: WebSocket, connection_token: str = ''):
         await asyncio.gather(*tasks, return_exceptions=True)
         if call.asr:
             await call.asr.close()
-        if call.exotel_call_sid:
-            await save_call(call_sid=call.exotel_call_sid, caller=call.caller_number,
-                            language=call.language, started_at=call.started_at,
-                            transcript=call.transcript, usefulness=call.usefulness)
         with contextlib.suppress(Exception):
             await ws.close()

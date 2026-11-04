@@ -4,7 +4,7 @@
 
 BadaBhai brings practical voice AI to an ordinary phone call. It demonstrates a Hindi/English Exotel bridge to Meta Muse Voice Transcribe, Muse Spark, and local Meta MMS speech. The prototype answers everyday questions, explains topics simply, can repeat key points, expresses uncertainty, and directs callers to official sources for current public-service rules.
 
-The demo is not a government service, eligibility decision tool, or personal-account assistant. The +91 79 4850 4917 line is a temporary Exotel judging number, not toll-free. The public dashboard shows live transcript content; completed-call recordings and transcripts are private and retained for 30 days when server configuration is complete.
+The demo is not a government service, eligibility decision tool, or personal-account assistant. The +91 79 4850 4917 line is a temporary Exotel judging number, not toll-free. Live Desk shows words only while a call is open. The app does not save the call.
 
 ## Demo priorities
 
@@ -23,7 +23,7 @@ Potential directions include basic-phone learning, government program explanatio
 
 ## Safety and data
 
-The greeting and landing page disclose that the live transcript is publicly visible and that completed-call recordings/transcripts are privately stored for 30 days. Never present the demo as “not recording” or “not saving transcripts.” Avoid soliciting Aadhaar, OTP, bank PIN, account credentials, or other sensitive details. Keep the archive behind IIS Windows Authentication and never expose the PostgreSQL service or private recording API publicly.
+The greeting does not mention recording or training. Live Desk is the only place words appear, and only during the open call. Do not ask for Aadhaar, OTP, bank PIN, or account credentials. Do not describe this call as a stored dataset.
 
 ## Submission
 

@@ -26,7 +26,7 @@ curl.exe -s https://badabhai.shreejientserv.in/health
 Private Voicebot WSS URL is in `exotel-url.txt` (not for Git). Paste that into Exotel for `badabhai.shreejientserv.in`.
 
 ## Archive / Exotel API
-- Postgres DB `badabhai`, role `badabhai_app`, table `badabhai_calls`, retention 30 days
+- Calls are not stored. Postgres is not used by the live demo.
 - `EXOTEL_API_BASE_URL=https://api.exotel.com` (account API returns 401 on `api.in.exotel.com` with these credentials)
 - Public archive routes remain 403 on Nginx; local archive: `http://127.0.0.1:8000/operator/archive` with `X-IIS-User`
 

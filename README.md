@@ -6,10 +6,9 @@ BadaBhai brings voice-first AI guidance to ordinary phones. The hackathon demo c
 
 - Public landing page: `/` (project overview, current walkthrough, future vision video, and a scripted call reenactment at `/#call-backup`). `/backup-demo` lets judges choose Hindi or Indian English narration if the temporary line is unavailable.
 - Public, read-only live dashboard: `/dashboard` (also available at `/operator`). It shows live turns, caller country code only, selected language, call duration, response timings, keypad interruptions, and caller usefulness feedback.
-- Private call archive: `/operator/archive`. IIS Windows Authentication must protect this page and `/api/private/*`. The archive masks caller numbers in the UI, allows search, and plays stored recordings beside transcripts.
-- Temporary Exotel line: **+91 79 4850 4917**. It is not toll-free or a government helpline. International access and charges depend on the caller's carrier.
+- Temporary Exotel line: **+91 79 4850 4917**. It is not toll-free or a government helpline. International access and charges depend on the caller's carrier. If the free line is down, use `/backup-demo`.
 
-The live transcript is visible on the public judge dashboard. The archive stores completed-call recordings and transcripts privately in PostgreSQL for 30 days, when Exotel API and PostgreSQL settings are configured. The phone greeting and landing page disclose this. Callers are asked not to share sensitive details. The app never asks for Aadhaar, OTPs, bank PINs, or account credentials, and it does not determine personal eligibility.
+Live Desk shows the conversation only while a call is open. Calls and words are not saved. The app never asks for Aadhaar, OTPs, bank PINs, or account credentials, and it does not determine personal eligibility.
 
 ## Local setup on Windows
 
@@ -35,7 +34,7 @@ Open `http://127.0.0.1:8000`. The judge dashboard has no app-token prompt. `APP_
 
 ## PostgreSQL archive
 
-The app uses the PostgreSQL `psql` command-line client to avoid adding a Python database dependency. Install PostgreSQL client tools on the server and set `PSQL_PATH` to `psql.exe`. The service role needs permission to create and maintain the `badabhai_calls` table and indexes in the configured database. Keep the database private to the application host. Retention defaults to 30 days (`CALL_RETENTION_DAYS`) and is enforced at startup and after each completed call.
+Calls are not written to a database. Live Desk is a temporary view for the open call and clears when the call ends. PostgreSQL is not required for the demo.
 
 Exotel supplies the call SID in its Voicebot WebSocket events. At call end, BadaBhai requests call details, downloads the signed recording URL when available, then stores the audio bytes and transcript in PostgreSQL. If Exotel API credentials are missing or the recording is unavailable, the transcript is still saved and the archive shows that no recording was captured.
 
