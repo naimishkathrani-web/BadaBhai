@@ -18,7 +18,7 @@ The application code is under the MIT License. See [LICENSE](LICENSE). Meta's AP
 
 - [/](https://badabhai.shreejientserv.in/) — the idea, the 90-second walkthrough, and the phone number.
 - [/how-it-works](https://badabhai.shreejientserv.in/how-it-works) — the proof of concept that runs today.
-- [/future#impact](https://badabhai.shreejientserv.in/future#impact) — what we would build next, starting with nearby public job posts. That helper is not on the call today.
+- [/future#impact](https://badabhai.shreejientserv.in/future#impact) — what we would build next: nearby work by voice, and an SMS with office details if the caller asks for it. Neither is on the call today.
 - [/commitment](https://badabhai.shreejientserv.in/commitment) — if this wins any prize, half goes to a Rajkot and Ahmedabad pilot, official-source scheme explainers, and MCA and BTech interns.
 - [/architecture](https://badabhai.shreejientserv.in/architecture) — how the call is built with Meta.
 
@@ -30,7 +30,7 @@ This is an independent prototype, not a Meta product and not a government servic
 - Answers: Meta `muse-spark-1.3`. Everyday questions stay short. A public office, address, or phone number uses the same model with Meta web search, and the voice says only what that search found.
 - Speech: an Indian voice speaks the answer on the phone line. Meta MMS Hindi and English models are an optional local fallback and stay under CC-BY-NC-4.0.
 
-Jobs, more Indian languages, scheme explainers, village orders, and live translation are next steps. They are not features of the live call. Today's call is Hindi and English only.
+Nearby work by voice, SMS follow-up for addresses, more Indian languages, scheme explainers, village orders, and live translation are next steps. They are not features of the live call. Today's call is Hindi and English only.
 
 ## Run it locally
 
