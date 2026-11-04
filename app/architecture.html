@@ -34,13 +34,11 @@
   <table class="table">
     <thead><tr><th>Model / layer</th><th>Role in BadaBhai</th></tr></thead>
     <tbody>
-      <tr><td><strong>Meta Voice Transcribe (STT)</strong></td><td>~800ms · Hindi/English detect · noisy telephone-grade audio · Hinglish / code-switching bias</td></tr>
-      <tr><td><strong>Muse Spark 1.1</strong></td><td>Reasoning ~2–5 sec · helpful 2–3 sentence answers first · follow-up only if needed · guides callers instead of defaulting to “I am not sure” · replies in caller’s language</td></tr>
-      <tr><td><strong>Neural Indian TTS</strong></td><td>en-IN / hi-IN neural voices for Scrimba-like clarity on the phone · Meta MMS Indic as offline fallback · no waiting beep · speak-to-interrupt during answers</td></tr>
-      <tr><td><strong>Future: SAM 3.1</strong></td><td>Vision if a photo arrives via WhatsApp (not in today’s POC call path)</td></tr>
-      <tr><td><strong>Future: Glimmer</strong></td><td>Explainer / image generation for teaching materials</td></tr>
-      <tr><td><strong>Future: Muse Code</strong></td><td>For MCA/BTech interns teaching and building on real phone infra</td></tr>
-      <tr><td><strong>Exotel telephony</strong></td><td>POTS (not WebRTC) for 2G feature phones / basic phones · 1 concurrent call · keypad 1 capabilities · 2 English · 3 Hindi · 9 interrupt · location asked today; tower triangulation later with operator tie-ups</td></tr>
+      <tr><td><strong>Meta Voice Transcribe</strong></td><td>Turns noisy Hindi or English phone audio into text. Estimate about 0.8s after the caller stops speaking.</td></tr>
+      <tr><td><strong>Muse Spark 1.3</strong></td><td>Writes a short spoken answer. Everyday questions stay short. A public office, address, or phone number uses Meta web search, and the voice says only what that search found.</td></tr>
+      <tr><td><strong>Indian voice</strong></td><td>Speaks the answer on the phone line in Indian English or Hindi. Meta MMS is only an offline fallback. No wait tone. The caller can speak over an answer or press 9 to interrupt.</td></tr>
+      <tr><td><strong>Exotel telephony</strong></td><td>Ordinary phone call, not a browser call. One call at a time. Press 1 for what it can do, 2 for English, 3 for Hindi, or 9 to stop.</td></tr>
+      <tr><td><strong>Later, not live</strong></td><td>SAM, Muse Image, and Muse Wonder are not on the call today. A future WhatsApp photo path could use SAM. Interns could learn with Muse Code.</td></tr>
     </tbody>
   </table>
 </section>
@@ -50,15 +48,15 @@
   <div class="mermaid">
 flowchart LR
   A["Feature / basic / ordinary phone call\n(POTS)"] --> B["Exotel POTS\n1 concurrent call\nWindows Server 2022"]
-  B --> C["Meta Voice Transcribe\nSTT ~800ms"]
-  C --> D["Muse Spark\nshort spoken answer"]
-  D --> E["Indian voice\nno wait tone"]
+  B --> C["Meta Voice Transcribe"]
+  C --> D["Muse Spark 1.3\nshort answer or web search"]
+  D --> E["Indian voice"]
   E --> F["Caller hears answer\nKeypad 1/2/3/9"]
   G["Live Desk\nwords only while the call is open"] --- B
-  H["Later, not in this call\nnearby public posts\nunverified"] --- D
-  I["Later\nMore Indian languages\nOnly after a real partner\nNot part of this call"] --- D
+  H["Later, not in this call\nnearby work ideas"] --- D
+  I["Later\nMore Indian languages"] --- D
   </div>
-  <div class="note-green">Live Desk shows the words and timings only while the call is open. Phone numbers stay hidden. The call is not saved. No Aadhaar, OTP, or bank PIN. No personal account access.</div>
+  <div class="note-green">Live Desk shows the words and timings only while the call is open. Phone numbers stay hidden. The call is not saved. No Aadhaar, OTP, or bank PIN. No personal account access. The live call does not ask for location.</div>
 </section>
 
 <section class="section" style="padding-top:0">
@@ -68,19 +66,19 @@ flowchart LR
     <li>No personal account access; no eligibility determination · General guidance only</li>
     <li>Live Desk is only a window on the open call. Words are not saved after the call ends.</li>
     <li>General guidance. For personal rules, it points to an official office.</li>
-    <li>A future job helper would say posts are public and unverified, and not to pay for a job.</li>
-    <li>Temporary Exotel number is not toll-free, not a government helpline; international charges depend on carrier · trial till ~9 Nov · backup <a href="/backup-demo">/backup-demo</a></li>
-    <li>One call at a time. A short pause while the answer is prepared is normal.</li>
-    <li>Works on ordinary phone (no app required). WhatsApp option for those who have it, but not required.</li>
+    <li>If the search does not confirm a public address or phone number, the voice says so. It does not invent one.</li>
+    <li>A future job helper would use only consented or official sources, say posts are unverified, and tell people not to pay for a job.</li>
+    <li>Temporary Exotel number is not toll-free and not a government helpline. Trial till about 9 Nov. Backup: <a href="/backup-demo">/backup-demo</a>.</li>
+    <li>One call at a time. A short pause while the answer is prepared is normal. Silence or noise gets a short “please ask again.”</li>
   </ul>
 </section>
 
 <section class="section" style="padding-top:0">
   <h2>4. Phased roadmap</h2>
   <div class="phase"><strong>Phase 0 · POC today</strong><p>Exotel trial 07948504917 (active till ~9 Nov) · FastAPI on Windows Server 2022 · Meta speech-to-text and Muse Spark · Indian voice · Hindi and English · ordinary phone · one call · Live Desk · backup walkthrough at /backup-demo</p></div>
-  <div class="phase"><strong>Phase 1 · Immediate (0–3 months)</strong><p>FB Groups + IG Reels public job index + WhatsApp seeker/poster numbers · Rajkot &amp; Ahmedabad pilot · MCA/BTech interns · half-prize investment · disclaimers + e-Shram benefits · location asked today; tower triangulation later with operator tie-ups</p></div>
-  <div class="phase"><strong>Phase 2 · Regional scale (3–9 months)</strong><p>Ayushman / PM-KISAN / e-Shram explainers in Gujarati, Tamil, Bengali, Bhojpuri with official sources · more STT/TTS languages · state subdomains · more numbers · move off single Windows box to auto-scale</p></div>
-  <div class="phase"><strong>Phase 3 · Later</strong><p>More languages, simpler phone menus, village voice orders, and a live translation bridge. None of this runs on the demo line today.</p></div>
+  <div class="phase"><strong>Phase 1 · Explore next</strong><p>Nearby work by voice for a Rajkot and Ahmedabad pilot, only from consented or official sources, with a clear “do not pay for a job” line and e-Shram guidance. Location would be asked on the call only if the person chooses to say it. Nothing from the call is saved today.</p></div>
+  <div class="phase"><strong>Phase 2 · Later</strong><p>Official-source scheme explainers in more Indian languages, more phone lines, and a move off a single server. Needs partners and approvals.</p></div>
+  <div class="phase"><strong>Phase 3 · Later still</strong><p>Simpler phone menus, village voice orders, and a live translation bridge. None of this runs on the demo line today.</p></div>
   <div class="warn" style="background:#eef3e6;color:#405b4c">Phases require approvals, partnerships, consent, and infrastructure. Independent prototype — not a Meta or government service.</div>
   <div class="actions">
     <a class="button ghost" href="/">Home</a>
