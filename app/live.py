@@ -1,4 +1,4 @@
-"""Ephemeral, token-protected events for the judge/demo dashboard."""
+"""Ephemeral, public read-only events for the judge/demo dashboard."""
 
 import asyncio
 

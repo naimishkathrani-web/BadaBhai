@@ -1,91 +1,44 @@
 # Windows Server 2022 deployment
 
-Target: 4 CPU cores, 16 GB RAM, no GPU. Start with **one simultaneous call** and measure CPU/RAM and reply latency. No GPU is required by this CPU-based prototype. Capacity is not load-tested.
+Target: one Windows Server 2022 machine with 4 CPU cores and 16 GB RAM. Keep one application process and one simultaneous phone call for the judging demo. The voice models load into memory; a second worker would duplicate that cost and call state.
 
-The app must run continuously; Cursor/Codex do not need to stay open. Codex is a development assistant, not a component of the telephone runtime.
+## 1. Pull and prepare the app
 
-## 1. Clone and prepare
-
-Install 64-bit Python 3.11 and Git on the server. Use one dedicated Windows account for setup and execution, so the model cache is shared. In PowerShell:
+Use the existing project directory in Cursor and pull the latest `main` branch. Keep the server's `.env` private and do not copy a laptop virtual environment to the server. Install Python 3.11/3.12 and run the repository setup script if the environment has not been prepared:
 
 ```powershell
-git clone https://github.com/naimishkathrani-web/BadaBhai.git D:\Apps\BadaBhai
 cd D:\Apps\BadaBhai
 .\deploy\setup.ps1
 ```
 
-The first install downloads packages and both Meta voice models. Setup creates a private `.env` with a random app token. Add the dev.meta.ai key after `MODEL_API_KEY=`. Do not put keys in `.env.example`. For an existing clone use `git pull --ff-only`; do not copy a laptop `.venv` to the server.
+Set the server `.env` values for `MODEL_API_KEY`, `APP_TOKEN`, `JUDGES_PUBLIC_PHONE_E164`, `JUDGES_PUBLIC_VIDEO_URL`, Exotel API access, and PostgreSQL. Keep current keys and app token; never display or commit them. Use the current judge line `+917948504917` and the two Scrimba video links embedded in `app/landing.html`.
 
-Run setup under the same account that will host the app. Use `.venv\Scripts\python.exe -m pytest -q` to verify the installation.
+Install PostgreSQL client tools and set `PSQL_PATH` to the installed `psql.exe`. Configure `PGHOST=127.0.0.1`, port, database, a restricted app user, and `PGPASSWORD` in the service environment. The app initializes `badabhai_calls` and enforces 30-day retention. Keep Postgres local/firewalled and do not use a superuser for the app.
 
-## 2. First local run
+## 2. Local service check
 
-```powershell
-.\start.ps1
-```
+Start one Uvicorn instance on loopback, port 8000, using the repository's `start.ps1`/`deploy\run-server.ps1` scripts. Wait for local voice warmup to finish. Open `http://127.0.0.1:8000/`, `/dashboard`, and `/operator/archive` locally. The public dashboard no longer needs an app-token prompt. The archive must remain closed unless the trusted IIS Windows-auth header is present.
 
-Wait for `Voice startup complete: ready to accept calls` in the console before testing. Open http://127.0.0.1:8000, use the private APP_TOKEN, and test Hindi and English replies and playback. Initial startup can take time; later calls reuse the loaded voices.
+Test the audio path with a real Exotel call after the server is running: +91 callers start in Hindi; other callers start in English. Key 1 plays the capabilities overview, key 2 selects English, key 3 selects Hindi, key 9 interrupts, and keys 7/8 rate answer usefulness. The greeting discloses public live transcript visibility and private 30-day archive retention.
 
-The public judge landing page is at `/`. Open `/operator` for the live call dashboard, enter the APP_TOKEN and select **Connect dashboard** before placing an Exotel test call. The transcript, language, source reference and per-turn timing appear live. The server does not persist call events; the operator's browser keeps the visible transcript until the next call or page close. The operator UI requires the private app token; use HTTPS on the public hostname.
+## 3. IIS reverse proxy and certificate
 
-### Judge phone number and international callers
+Run Uvicorn only on `127.0.0.1:8000`. Configure IIS ARR and WebSocket Protocol to proxy requests, including the Exotel `/exotel/{APP_TOKEN}` WebSocket and judge `/api/live` WebSocket. Keep `/` and `/dashboard` public and read-only. Do not put `APP_TOKEN` in browser HTML or JavaScript.
 
-The landing page displays the temporary Exotel judge line as `+91 79 4850 4917`. It is labeled as a hackathon demo number, not a government helpline, and not toll-free. Exotel support says not to publish an assigned ExoPhone on public collateral; this page is intended for the unlisted hackathon judging link. For a production service, use a customer-facing number approved for publication and route/forward it to Exotel.
+Protect `/operator/archive` and `/api/private/*` with IIS Windows Authentication. Strip any incoming `X-IIS-User` header and set it from IIS's authenticated `LOGON_USER`. Confirm the app sees IIS's loopback connection and that an unauthenticated external request cannot read recordings or transcripts. Do not expose port 8000 or PostgreSQL to the internet.
 
-For an Indian geographic number written domestically as `0` plus the area code and subscriber number (for example `080…`), the international format is typically `+91` plus the digits after the leading `0` (for example `+91 80…`). The actual Exotel allocation may be a different number type, so do not infer the public number from a WebSocket/Voicebot ExoPhone. A US judge's ability to call depends on the number type, Exotel route/account settings and US carrier. Test from a US-origin phone before promising a live call; international caller charges may apply. This project cannot guarantee international reachability based on the number format alone.
+A self-signed certificate is suitable for local/internal testing. Public judges and Exotel need a certificate chain their clients trust; use a publicly trusted TLS certificate for the live hostname or verify client trust before advertising the call/dashboard. A browser certificate warning or untrusted WSS endpoint can prevent a judge from testing the service.
 
-The page reads the line from `JUDGES_PUBLIC_PHONE_E164` and defaults to the current judge number if unset or blank. The format validator requires a plus sign and country code, but it cannot verify ownership or international routing. To change the demo line, set the value in the server's private `.env` and restart the app.
+The DNS record, public route, IIS site binding and certificate are server-side tasks. Verify `/health`, the landing page, dashboard WebSocket, and Exotel WebSocket on the final hostname before sharing it.
 
-The short public video URL is stored in `JUDGES_PUBLIC_VIDEO_URL` in `.env.example` and embedded by the public page; it is an unlisted narrated project walkthrough. It explains the current Hindi/English demo and the proposed public-service direction. It is not a recording of a verified live call.
+## 4. Archive requirements
 
-### Optional opt-in SMS recap
+Completed calls are archived when Exotel provides `call_sid`, `EXOTEL_API_KEY`, `EXOTEL_API_TOKEN`, `EXOTEL_ACCOUNT_SID`, and PostgreSQL is configured. The server requests Exotel Call Details and downloads the signed recording when available; transcripts are still saved if the recording lookup fails. Confirm a real call appears in the private archive with a transcript and playable recording. Do not infer that an Exotel dashboard recording is in PostgreSQL until that check passes.
 
-The caller can press **3 after PM-KISAN guidance** to request the official portal link by SMS. The app sends only after that keypress and uses the inbound caller number supplied by Exotel in the call start event. SMS is disabled until the server's private `.env` contains `EXOTEL_SMS_BASE_URL`, `EXOTEL_API_KEY`, `EXOTEL_API_TOKEN`, `EXOTEL_ACCOUNT_SID`, `EXOTEL_SMS_FROM`, `EXOTEL_DLT_ENTITY_ID`, and approved `EXOTEL_DLT_TEMPLATE_HI` / `EXOTEL_DLT_TEMPLATE_EN` values. Exotel requires approved DLT registration and sender/template configuration for Indian traffic. Check the received SMS on a real phone before showing this feature as working; HTTP acceptance does not confirm delivery. Do not commit these values.
+The archive UI masks caller numbers, supports filtering by full number/call ID, and opens each transcript and recording. The public live dashboard shows no full phone number. Purge is driven by `CALL_RETENTION_DAYS=30` at service startup and after completed calls.
 
-## 3. Permanent public hostname
+## 5. Exotel line and product limits
 
-Recommended address: `badabhai.shreejientserv.in` (proposed, not configured). The parent domain currently has dns-parking.com nameservers. A standard Cloudflare published-application tunnel needs an appropriately configured Cloudflare DNS zone. **Do not casually change nameservers**: inventory and preserve existing website, email MX, SPF/DKIM/DMARC, verification, and other DNS records before a migration.
+The temporary judge line is `+91 79 4850 4917`. It is not toll-free and is not an official government helpline. International reachability and charges depend on Exotel account settings and the caller's carrier; confirm with a US-origin phone before making a promise. Production requires an approved public-facing number and local-language/source partnerships.
 
-Options:
-
-1. Configure the domain/DNS for a **named Cloudflare Tunnel**, create a public hostname mapping to `http://127.0.0.1:8000`, and install its connector as a Windows service using the account-specific command from Cloudflare. No inbound port-forwarding is needed for this route. The connector token stays private on the server.
-2. Keep current DNS and use a reverse proxy on the server with a valid TLS certificate and WebSocket support, plus a DNS record pointing to the server's reachable public address. This requires deliberate firewall/NAT/port 443 configuration. Never expose the bare port 8000 to the internet.
-
-The appropriate option depends on domain control, current DNS records, public IP and firewall access. Neither has been configured remotely by this repository. The current random trycloudflare URL is for testing, not dependable judging uptime.
-
-Once the permanent hostname works:
-
-```powershell
-.\.venv\Scripts\python.exe deploy\write-exotel-url.py badabhai.shreejientserv.in
-```
-
-Copy the entire line from the private `exotel-url.txt` into Exotel **Voicebot URL**, save, and make a real call. The URL uses a path token because query-token authentication failed in this trial account. A stable hostname survives app restarts and later server moves if DNS/tunnel routing and APP_TOKEN remain the same. Moving from the laptop's temporary hostname requires changing Exotel's URL once.
-
-## 4. Run automatically after reboot
-
-After manual testing, stop the manual `start.ps1` process. In Windows Task Scheduler create a task under the **same account used for setup**:
-
-- Trigger: At startup; allow a short startup/network delay.
-- Action program: `powershell.exe`.
-- Arguments: `-NoProfile -File "D:\Apps\BadaBhai\deploy\run-server.ps1"`.
-- Start in: `D:\Apps\BadaBhai`.
-- Choose Run whether user is logged on or not, and supply that account's credentials yourself.
-- Remove the default execution-time cutoff; enable restart on failure and prevent duplicate instances.
-
-The supervisor script restarts the Python app after unexpected exits and writes timestamped ignored log files. Configure log retention on the server. Keep exactly one app instance: voice models and per-call state are in memory. Configure the named Cloudflare connector separately as a Windows service. Reboot and verify an external call without opening Cursor/Codex.
-
-## 5. Continue development on the server
-
-Open `D:\Apps\BadaBhai` in Cursor, optionally with the official Codex IDE extension. Or install Codex CLI (`npm install -g @openai/codex` with Node.js installed), run `codex` in the project directory and sign in. Windows Server compatibility of the chosen developer tool must be checked during installation.
-
-Read `HANDOFF.md` first. This chat does not automatically gain access to the server or transfer its live state. Never send Windows passwords, Meta keys or tunnel tokens in chat. The deployed app still uses Meta models, regardless of which coding assistant maintains it.
-
-## 6. Known gaps before wider use
-
-- Text now streams into sentence-sized synthesis jobs; later synthesis overlaps playback. Press 9 to interrupt and clear playback. Speech-triggered interruption and echo-aware full duplex are still future work.
-- Default capacity is one simultaneous call (MAX_CONCURRENT_CALLS). Tune endpointing and measure latency before calling this a natural realtime assistant. Minimal reasoning is the default; harder questions may need more reasoning.
-- Use timestamps/timing logs to distinguish recognition, Meta inference and speech generation delays. Short replies and preloaded voices reduce waiting, but are not a latency guarantee.
-- Test trial expiry, Exotel AgentStream pricing/activation, Meta billing limits and restart recovery.
-- MMS has noncommercial license restrictions. Review rights before offering a commercial product.
-
-References: https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/local-management/as-a-service/windows/ and https://developers.openai.com/codex/ide
+Today's voice demo supports Hindi and English. Other languages, verified government program knowledge, low-resource speech research, natural IVR replacement, village ordering, and live call translation are future proposals. MMS voice-model licensing is noncommercial CC-BY-NC-4.0; review before commercial deployment.

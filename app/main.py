@@ -29,13 +29,14 @@ from app.archive import (get_call, initialize as archive_initialize, list_calls,
 from app.live import dashboard
 
 log = logging.getLogger('badabhai')
-WELCOME_HI = 'नमस्ते, मैं बड़ा भाई हूँ, आपका वॉइस एआई सहायक। आप हिंदी या अंग्रेज़ी में सवाल पूछ सकते हैं। जवाब देने में कुछ सेकंड लगते हैं। इस डेमो की रिकॉर्डिंग और बातचीत का लिखित रूप तीस दिनों तक सुरक्षित रखा जाएगा। लाइव लिखित बातचीत सार्वजनिक जज डैशबोर्ड पर दिखाई देगी। निजी जानकारी साझा न करें। मैं क्या कर सकता हूँ, यह सुनने के लिए एक दबाएँ, या बीप के बाद सवाल पूछें।'
-WELCOME_EN = "Hello, I'm BadaBhai, your voice AI helper on an ordinary phone. I work in Hindi and English. I take a few seconds to think. This demo stores call recordings and transcripts privately for 30 days; the live transcript is visible on the public judge dashboard. Please do not share sensitive information. Press 1 to hear what I can do today and future potential, or ask your question after the beep."
+WELCOME_HI = 'नमस्ते, मैं बड़ा भाई हूँ, आपका वॉइस एआई सहायक। आप हिंदी या अंग्रेज़ी में सवाल पूछ सकते हैं। कोई ऐप नहीं चाहिए। अंग्रेज़ी के लिए दो दबाएँ। जवाब देने में कुछ सेकंड लगते हैं और सोचते समय हल्की टोन सुनाई देगी। इस डेमो की रिकॉर्डिंग और लिखित बातचीत निजी रूप से तीस दिनों तक रखी जाएगी; लाइव लिखित बातचीत सार्वजनिक जज डैशबोर्ड पर दिखेगी। निजी जानकारी साझा न करें। मैं क्या कर सकता हूँ, यह सुनने के लिए एक दबाएँ, या बीप के बाद सवाल पूछें।'
+WELCOME_EN = "Hello, I'm BadaBhai, your voice AI helper on an ordinary phone. I work in Hindi and English, and no app is needed. Press 3 to switch to Hindi. I take a few seconds to think, so you'll hear a soft tone while I do. This demo stores recordings and transcripts privately for 30 days; the live transcript is visible on the public judge dashboard. Please do not share sensitive information. Press 1 to hear what I can do today and where this could go next, or ask your question after the beep."
 RETRY_HI = 'माफ़ कीजिए, जवाब मिलने में समस्या हुई। कृपया अपना सवाल फिर से पूछिए।'
 RETRY_EN = 'Sorry, I could not get an answer. Please ask your question again.'
-CAPABILITIES_EN = ('Today, BadaBhai answers everyday questions, explains ideas simply, and repeats information in Hindi and English. In future, local-language versions could teach maths and science on feature phones, replace long menus, help remote villages place voice orders, and support local marketplaces and logistics. With consent, transcripts could improve speech models for underrepresented languages. The same technology could translate live calls.')
-CAPABILITIES_HI = ('आज बड़ा भाई रोज़मर्रा के सवालों के जवाब देता है, बातों को आसान बनाता है और हिंदी या अंग्रेज़ी में जानकारी दोहरा सकता है। आगे चलकर स्थानीय भाषा वाले संस्करण साधारण फोन पर गणित-विज्ञान सिखा सकते हैं, लंबे फोन मेन्यू की जगह ले सकते हैं और गाँवों में बोलकर सामान मँगाने में मदद कर सकते हैं। सहमति से मिले लिखित संवाद कम संसाधन वाली भाषाओं की आवाज़ पहचान सुधार सकते हैं। यही तकनीक स्थानीय बाज़ार, लॉजिस्टिक्स और लाइव कॉल अनुवाद में भी मदद कर सकती है।')
+CAPABILITIES_EN = ('Today, BadaBhai answers everyday questions, explains simply, and repeats key details in Hindi and English. The public judge dashboard shows live words and timing; recordings and transcripts are private for 30 days. With local partners and explicit consent, future versions could teach on basic phones, explain verified government programs, replace long IVR menus, and take village voice orders. Separately opt-in, anonymized speech in Bhojpuri, Tamil, Marathi, Swahili, Hausa, Bahasa, and Tagalog could inform Meta research on voice-token models and live translation. This demo does not train models; these are future possibilities.')
+CAPABILITIES_HI = ('आज बड़ा भाई रोज़मर्रा के सवालों के जवाब देता है, बातों को आसान भाषा में समझाता है और हिंदी-अंग्रेज़ी में जानकारी दोहराता है। सार्वजनिक जज डैशबोर्ड पर लाइव बातचीत और समय दिखता है; रिकॉर्डिंग और लिखित बातचीत निजी रूप से तीस दिन रखी जाती है। स्थानीय साझेदारों और स्पष्ट सहमति से भविष्य में साधारण फोन पर पढ़ाई, सत्यापित सरकारी जानकारी, आसान फोन मेन्यू और गाँवों में बोलकर ऑर्डर संभव हो सकते हैं। भोजपुरी, तमिल, मराठी, स्वाहिली, हौसा, बहासा और तागालोग की अलग से सहमति लेकर गुमनाम की गई आवाज़ें मेटा को वॉइस-टोकन मॉडल और लाइव अनुवाद पर शोध में मदद कर सकती हैं। यह डेमो मॉडल ट्रेन नहीं करता; ये भविष्य की संभावनाएँ हैं।')
 CAPABILITY_AUDIO = {}
+WAIT_TONE_AUDIO = {}
 
 
 def soft_tone(rate=8000, duration_ms=180):
@@ -46,6 +47,19 @@ def soft_tone(rate=8000, duration_ms=180):
         envelope = min(1.0, i / edge, (frames - i) / edge)
         samples.append(struct.pack('<h', int(1200 * envelope * math.sin(2 * math.pi * 520 * i / rate))))
     return b''.join(samples)
+
+
+def wait_tone(rate):
+    if rate not in WAIT_TONE_AUDIO:
+        path = Path(__file__).resolve().parents[1] / 'assets' / 'wait-tone.wav'
+        try:
+            with wave.open(str(path), 'rb') as wav:
+                source_rate = wav.getframerate()
+                pcm = wav.readframes(wav.getnframes())
+            WAIT_TONE_AUDIO[rate] = Resampler(source_rate, rate).convert(pcm)
+        except (FileNotFoundError, wave.Error):
+            WAIT_TONE_AUDIO[rate] = soft_tone(rate, 1000)
+    return WAIT_TONE_AUDIO[rate]
 
 
 @asynccontextmanager
@@ -77,7 +91,7 @@ async def lifespan(app):
 
 app = FastAPI(title='BadaBhai', lifespan=lifespan)
 active_calls = 0
-live_state = {'status': 'waiting', 'call_id': None, 'language': None}
+live_state = {'status': 'waiting', 'call_id': None, 'language': None, 'country_code': None}
 
 
 def authorized(value):
@@ -97,6 +111,7 @@ def home():
 
 
 @app.get('/operator', response_class=HTMLResponse)
+@app.get('/dashboard', response_class=HTMLResponse)
 def operator_dashboard():
     return Path(__file__).with_name('index.html').read_text(encoding='utf-8')
 
@@ -248,6 +263,7 @@ class Call:
         self.turn_task = None
         self.call_id = None
         self.caller_number = None
+        self.country_code = None
         self.turn_started = None
         self.request_started = None
         self.answer_first_audio_sent = False
@@ -305,14 +321,19 @@ class Call:
                 self.call_id = secrets.token_hex(4)
                 self.caller_number = start.get('from')
                 self.language = default_language_for_caller(self.caller_number)
+                digits = re.sub(r'\D', '', str(self.caller_number or ''))
+                self.country_code = next((code for code in ('91', '1', '44', '61', '65', '62', '63', '254', '234', '27')
+                                          if digits.startswith(code)), None)
                 self.rate = int(start.get('media_format', {}).get('sample_rate', 8000))
                 if not self.sid or self.rate not in (8000, 16000, 24000):
                     raise ValueError('Unsupported audio format')
                 converter = Resampler(self.rate, 24000)
                 log.warning('Call audio ready: sample_rate=%d', self.rate)
                 live_state.update({'status': 'connected', 'call_id': self.call_id,
-                                   'language': self.language})
-                await self.publish('call_state', status='connected', language=self.language)
+                                   'language': self.language,
+                                   'country_code': '+' + self.country_code if self.country_code else None})
+                await self.publish('call_state', status='connected', language=self.language,
+                                   country_code='+' + self.country_code if self.country_code else None)
                 if os.getenv('CALL_MODE') != 'echo':
                     self.queue.put_nowait(('welcome', ''))
                     # Speak immediately while the recognition service opens its
@@ -343,6 +364,7 @@ class Call:
                     if self.turn_task and not self.turn_task.done():
                         self.turn_task.cancel()
                     log.warning('Caller interrupted playback using keypad')
+                    await self.publish('interrupt', method='keypad')
                 elif digit in ('7', '8') and self.feedback_available:
                     self.usefulness = 'helpful' if digit == '7' else 'not_helpful'
                     self.transcript.append({'role': 'feedback', 'value': self.usefulness,
@@ -355,11 +377,16 @@ class Call:
                     live_state['language'] = self.language
                     await self.publish('language', language=self.language)
                     self.queue.put_nowait(('language', self.language))
+                elif digit == '3' and not self.queue.full():
+                    self.language = 'hi'
+                    live_state['language'] = self.language
+                    await self.publish('language', language=self.language)
+                    self.queue.put_nowait(('language', self.language))
             elif kind == 'stop':
                 self.exotel_call_sid = self.exotel_call_sid or event.get('stop', {}).get('call_sid')
                 await self.publish('call_state', status='ended')
                 live_state.update({'status': 'waiting', 'call_id': None,
-                                   'language': None})
+                                   'language': None, 'country_code': None})
                 return
 
     async def transcripts(self):
@@ -385,7 +412,7 @@ class Call:
                     if event.get('type') == 'speechComplete':
                         text = event.get('transcript', '').strip()
                         if self.speech_end_at is not None:
-                            await self.publish('performance', stage='asr_finalize',
+                            await self.publish('performance', stage='asr_finalize', key='stt_ms',
                                                ms=round((time.perf_counter() - self.speech_end_at) * 1000, 1))
                         self.speech_end_at = None
                         if text and not self.busy and not self.queue.full():
@@ -432,7 +459,7 @@ class Call:
                     text_ready = time.perf_counter()
                     log.warning('Streamed sentence text ready at %.2fs', text_ready - started)
                     if not spoken:
-                        await self.publish('performance', stage='first_text',
+                        await self.publish('performance', stage='first_text', key='spark_ms',
                                            ms=round((text_ready - started) * 1000, 1))
                     await self.publish('assistant_sentence', text=sentence, language=language)
                     self.transcript.append({'role': 'assistant', 'text': sentence,
@@ -441,7 +468,7 @@ class Call:
                     pcm = await asyncio.to_thread(voice.synthesize, sentence, language, self.rate)
                     log.warning('Streamed sentence synthesis took %.2fs', time.perf_counter() - text_ready)
                     if not spoken:
-                        await self.publish('performance', stage='first_synthesis',
+                        await self.publish('performance', stage='first_synthesis', key='tts_ms',
                                            ms=round((time.perf_counter() - synthesis_started) * 1000, 1))
                     await queue.put((sentence, pcm, None))
             except Exception as exc:
@@ -455,10 +482,10 @@ class Call:
         try:
             while not self.interrupted.is_set():
                 try:
-                    sentence, pcm, error = await asyncio.wait_for(queue.get(), timeout=4)
+                    sentence, pcm, error = await asyncio.wait_for(queue.get(), timeout=3)
                 except asyncio.TimeoutError:
                     if not self.interrupted.is_set():
-                        await self.say('', language, pcm=soft_tone(self.rate))
+                        await self.say('', language, pcm=wait_tone(self.rate))
                     continue
                 if error:
                     raise error
@@ -496,7 +523,8 @@ class Call:
                 await self.say('अब अपना सवाल पूछिए।' if text == 'hi' else 'Please ask your question now.', text)
                 await self.say('', text, pcm=soft_tone(self.rate, 90))
             elif kind == 'language':
-                await self.say('Please ask your question after the tone.', text)
+                await self.say('अब टोन के बाद अपना सवाल पूछिए।' if text == 'hi'
+                               else 'Please ask your question after the tone.', text)
                 await self.say('', text, pcm=soft_tone(self.rate, 90))
             elif kind == 'notice':
                 await self.say(RETRY_HI if self.language == 'hi' else RETRY_EN, self.language)
@@ -518,13 +546,14 @@ class Call:
                     log.warning('Spoken answer turn completed in %.2fs', time.perf_counter() - started)
                     self.history = (messages + [{'role': 'assistant', 'content': reply}])[-12:]
                     await self.publish('assistant_state', status='complete')
-                    await self.publish('performance', stage='turn_complete',
+                    await self.publish('performance', stage='turn_complete', key='total_ms',
                                        ms=round((time.perf_counter() - (self.turn_started or started)) * 1000, 1))
                     self.feedback_available = True
-                    await self.say('क्या यह जवाब मददगार था? हाँ के लिए सात दबाएँ, नहीं के लिए आठ। आप अगला सवाल भी पूछ सकते हैं।'
-                                   if self.language == 'hi' else
-                                   'Was that answer helpful? Press 7 for yes or 8 for no. You can also ask another question.',
-                                   self.language)
+                    if not self.interrupted.is_set():
+                        await self.say('क्या यह जवाब मददगार था? हाँ के लिए सात दबाएँ, नहीं के लिए आठ। आप अगला सवाल भी पूछ सकते हैं।'
+                                       if self.language == 'hi' else
+                                       'Was that answer helpful? Press 7 for yes or 8 for no. You can also ask another question.',
+                                       self.language)
                 except Exception as exc:
                     log.warning('Answer turn failed (%s); keeping call open', type(exc).__name__)
                     await self.say(RETRY_HI if self.language == 'hi' else RETRY_EN, self.language)
@@ -569,7 +598,7 @@ async def exotel(ws: WebSocket, connection_token: str = ''):
         log.warning('Call ended with %s; verify model access/audio configuration', type(exc).__name__)
     finally:
         if call.call_id:
-            live_state.update({'status': 'waiting', 'call_id': None, 'language': None})
+            live_state.update({'status': 'waiting', 'call_id': None, 'language': None, 'country_code': None})
             await call.publish('call_state', status='ended')
         active_calls -= 1
         for task in tasks:

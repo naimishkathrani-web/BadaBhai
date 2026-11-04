@@ -8,3 +8,4 @@ tools/
 exotel-url.txt
 
 runtime/
+!assets/wait-tone.wav

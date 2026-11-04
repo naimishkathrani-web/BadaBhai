@@ -136,7 +136,7 @@ async def save_call(*, call_sid, caller, language, started_at, transcript, usefu
     if not (api_key and api_token and account_sid):
         log.warning('Exotel API credentials missing; saving transcript without recording')
     else:
-        base = os.getenv('EXOTEL_API_BASE_URL', os.getenv('EXOTEL_SMS_BASE_URL', 'https://api.in.exotel.com')).rstrip('/')
+        base = os.getenv('EXOTEL_API_BASE_URL', 'https://api.in.exotel.com').rstrip('/')
         endpoint = f"{base}/v1/Accounts/{quote(account_sid, safe='')}/Calls/{quote(str(call_sid), safe='')}.json?RecordingUrlValidity=60"
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(25, connect=8), auth=(api_key, api_token),

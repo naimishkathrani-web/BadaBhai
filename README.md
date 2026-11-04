@@ -1,104 +1,66 @@
 # BadaBhai
 
-Hindi and English assistance on ordinary phones using Meta models and Exotel Voicebot. The public judge page at `/` introduces the project and video. The protected operator dashboard at `/operator` shows a live, ephemeral call transcript, source used for the PM-KISAN demo, and first-response timing. No caller number or transcript is persisted by this app.
+BadaBhai brings voice-first AI guidance to ordinary phones. The hackathon demo connects an Exotel line to Meta Muse Voice Transcribe, Muse Spark, and local Meta MMS speech. Hindi is the default for caller IDs beginning with `+91`; other callers start in English. The live demo currently supports Hindi and English.
 
-Real incoming calls have been tested by the participant. For Windows Server 2022 setup, permanent hosting and continuing in Cursor/Codex, read [DEPLOY_WINDOWS.md](DEPLOY_WINDOWS.md) and [HANDOFF.md](HANDOFF.md).
+## Judge experience
 
-## Call architecture
+- Public landing page: `/` (project overview, two narrated videos, and call instructions).
+- Public, read-only live dashboard: `/dashboard` (also available at `/operator`). It shows live turns, caller country code only, selected language, call duration, response timings, keypad interruptions, and caller usefulness feedback.
+- Private call archive: `/operator/archive`. IIS Windows Authentication must protect this page and `/api/private/*`. The archive masks caller numbers in the UI, allows search, and plays stored recordings beside transcripts.
+- Temporary Exotel line: **+91 79 4850 4917**. It is not toll-free or a government helpline. International access and charges depend on the caller's carrier.
 
-```mermaid
-flowchart LR
-  A[Basic phone] <--> B[Exotel Voicebot]
-  B <--> C[Authenticated WebSocket bridge]
-  C --> D[Meta Muse Voice Transcribe]
-  D --> E[Meta Muse Spark: streaming text]
-  E --> F[Sentence buffer and local Meta MMS]
-  F --> C
-```
+The live transcript is visible on the public judge dashboard. The archive stores completed-call recordings and transcripts privately in PostgreSQL for 30 days, when Exotel API and PostgreSQL settings are configured. The phone greeting and landing page disclose this. Callers are asked not to share sensitive details. The app never asks for Aadhaar, OTPs, bank PINs, or account credentials, and it does not determine personal eligibility.
 
-The phone path streams text into sentence-sized speech jobs. Synthesis of the next sentence overlaps playback of the current sentence. Press **9** to stop a reply, then ask a new question. Speech-triggered interruption is not yet implemented. Recognition disconnects are retried up to three times without immediately dropping the telephone socket. The default is one simultaneous call.
+## Local setup on Windows
 
-The opening greeting is a short, natural AI-assistant introduction. Caller IDs with the Indian `+91` country code default to Hindi; US `+1` and unrecognized caller IDs default to English. The caller can still press **1** for Hindi or **2** for English.
-
-The dashboard at `/operator` authenticates its WebSocket with `APP_TOKEN` and can be open during an Exotel call. It shows caller transcript updates, BadaBhai reply sentences, selected language, source link/verification date, speech-end to transcript-final time, and time to first answer text, first speech preparation, first audio packet and turn completion. The server does not persist call events; the operator's browser keeps the visible transcript until the next call or the page is closed. The live view is intended for a trusted demo operator; protect it with HTTPS and a private app token.
-
-The public page reads its judge number and video link from `/api/public-demo-config`. The temporary judge line is `+91 79 4850 4917`; it is an Exotel-provided hackathon number, not a government helpline or toll-free line. Exotel's support guidance advises against publishing assigned ExoPhones on public collateral; production should use an approved customer-facing number routed to Exotel. The current call demo supports Hindi and English only; other languages require ASR, answer-quality and voice testing before being advertised.
-
-The PM-KISAN demo uses a short source context from the official portal, reviewed on 2026-11-04. It explains general scheme information and routes personal eligibility/status questions to the official KYS route; it does not decide eligibility or ask for Aadhaar/OTP/bank PIN. Refresh the reference and verification date before relying on it after the demo.
-
-After PM-KISAN guidance, the caller may press **3** to opt in to a short official-link SMS. The recipient number comes from Exotel's inbound call start event and is never shown in the dashboard or app logs. SMS delivery remains disabled until Exotel API credentials, an approved Sender ID, DLT Entity ID and approved Hindi/English template IDs are configured. A provider acceptance is not proof of delivery.
-
-## Models
-
-- Answers: Meta Model API `muse-spark-1.3` (configurable).
-- Recognition: `muse-voice-transcribe-1.0`, realtime Hindi/English endpointing.
-- Speech: local Meta `facebook/mms-tts-hin` and `facebook/mms-tts-eng`.
-
-MMS has a **CC-BY-NC-4.0 noncommercial license**. Review this before commercial deployment. All AI inference uses Meta models; no OpenAI or third-party speech model is substituted.
-
-## Local setup (Windows, Python 3.11 or 3.12)
+Use Python 3.11 or 3.12. Install the existing voice requirements and warm the local MMS models:
 
 ```powershell
 cd D:\Dev\BadaBhai
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-voice.txt
+Copy-Item .env.example .env
 ```
 
-Add your dev.meta.ai key to `.env` as `MODEL_API_KEY=...`. Never commit `.env`. On a new clone copy `.env.example` to `.env` and set a long random `APP_TOKEN`. This separate app token protects the browser test and Exotel endpoint.
+Set `MODEL_API_KEY` and a long random `APP_TOKEN` in the private `.env`. Configure the Exotel connection and, if you want private call archiving, `EXOTEL_API_BASE_URL`, `EXOTEL_API_KEY`, `EXOTEL_API_TOKEN`, `EXOTEL_ACCOUNT_SID`, and PostgreSQL `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, and `PSQL_PATH`. Keep `.env` out of Git.
 
-Warm up the local voices (first use downloads models), then start:
+Start the app with:
 
 ```powershell
 .\.venv\Scripts\python.exe -m scripts.warmup
 .\start.ps1
 ```
 
-Open http://127.0.0.1:8000 and enter **APP_TOKEN**, not your Meta key. Test Hindi and English text questions, then Listen to answer. Browser questions start fresh; phone calls retain six turns in memory. `/health` checks configuration only, not model access or voice readiness.
+Open `http://127.0.0.1:8000`. The judge dashboard has no app-token prompt. `APP_TOKEN` remains server-side for the Exotel WebSocket and private internal APIs; never put it in browser code.
 
-## Exotel
+## PostgreSQL archive
 
-A temporary Cloudflare tunnel is being used for the local demo. Its complete authenticated WebSocket URL is saved in **`exotel-url.txt`**, excluded from Git. Copy that entire line into the Exotel Voicebot URL field. Do not use the browser's localhost URL. This address expires when the tunnel stops; a new tunnel gets a new hostname.
+The app uses the PostgreSQL `psql` command-line client to avoid adding a Python database dependency. Install PostgreSQL client tools on the server and set `PSQL_PATH` to `psql.exe`. The service role needs permission to create and maintain the `badabhai_calls` table and indexes in the configured database. Keep the database private to the application host. Retention defaults to 30 days (`CALL_RETENTION_DAYS`) and is enforced at startup and after each completed call.
 
-1. Test both local voices first.
-2. Expose port 8000 using a TLS tunnel or server supporting long-lived WebSockets. Keep the local app running during a tunnel demo. Free hosts may sleep or lack memory for MMS.
-3. Set **Call Start → Voicebot → Hangup**. Stream is one-way and cannot play replies.
-4. Set Voicebot URL to `wss://YOUR-PUBLIC-HOST/exotel/YOUR_APP_TOKEN`. Never use your Meta key in this URL. Treat the complete URL as secret. Path authentication was verified after query-token connections failed in the trial account.
-5. Leave recording off. Save only after the server is reachable.
-6. Call Exotel directly. Press **1 for Hindi**, **2 for English**. Initial language is Hindi.
-7. If streaming is rejected, ask Exotel to enable AgentStream/Voicebot on the trial and confirm its cost. Applet visibility does not prove entitlement.
-8. Once direct calls work, optionally forward your spare Vi number to the Exotel number. Confirm Vi forwarding charges first.
+Exotel supplies the call SID in its Voicebot WebSocket events. At call end, BadaBhai requests call details, downloads the signed recording URL when available, then stores the audio bytes and transcript in PostgreSQL. If Exotel API credentials are missing or the recording is unavailable, the transcript is still saved and the archive shows that no recording was captured.
 
-For an audio-only test, set `CALL_MODE=echo` and restart. This repeats caller audio without Meta or voice downloads. Restore `CALL_MODE=meta` afterward.
+The archive routes expect a trusted `X-IIS-User` header and a loopback connection. Configure IIS Windows Authentication on `/operator/archive` and `/api/private/*`; strip caller-supplied `X-IIS-User`, inject the authenticated Windows identity, and keep the Uvicorn port bound to loopback. Do not make the private API public.
 
-## Current limitations
+## Exotel and IIS
 
-- Half-duplex for voice: wait for replies or press 9 to interrupt. Automatic interruption by speaking is not implemented.
-- Five-minute limit by default; no outbound calling. Data is discarded on disconnect.
-- No persistent transcript/caller-number logging by this app; authenticated dashboard events and call details are in memory only. Exotel and Meta have separate data handling policies.
-- Account model access, live recognition and real telephone integration require verification with your key.
-- Voice synthesis runs locally and can be slow; warm up first. Evaluate Hindi/English mixing and number pronunciation with real callers.
-- Answer-generation failures play a retry prompt and keep the call open. Connection/recognition failures may still end the session; no alternate model provider is silently used.
-- One simultaneous call by default; before public launch add per-caller rate limits, deployment monitoring and stronger provider authentication. This is a local hackathon prototype.
-- Neither a normal Exotel number nor forwarding a Vi mobile makes calls toll-free.
-- Live dashboard and scheme facts are a hackathon operator view, not an official government service. Verify current scheme details and deployment permissions before public rollout.
+Use the path-authenticated Voicebot URL produced by `deploy/write-exotel-url.py`; keep the app token private. For IIS, proxy HTTP and WebSocket requests to the loopback Uvicorn service, enable WebSocket forwarding, and expose `/` and `/dashboard` publicly without an app-token prompt. Protect private archive routes with Windows Authentication. Keep only one app process because call state and voice models are in memory, and the demo supports one simultaneous call.
 
-## Verification
+The current number is a temporary Exotel-provided demo line. It is not toll-free or an official service. For production, use a customer-facing number approved for publication and confirm international reachability with Exotel and carriers.
 
-```powershell
-.\.venv\Scripts\python.exe -m pytest -q
-```
+## Call experience and boundaries
 
-Tests simulate provider responses; no API credits are spent.
+The caller hears a language-specific greeting and retention disclosure. Press **1** during the greeting for the capabilities overview, **2** to switch to English, and **9** to interrupt an answer. While Muse Spark is thinking, the assistant plays the soft waiting tone every four seconds. After an answer, callers can press **7** if the guidance helped or **8** if it did not.
 
-For a deeper local test that **does use live Meta credits**, run `python -m scripts.smoke_call` with the app running. It simulates Exotel's welcome, language key and spoken question, and checks that answer audio comes back. A real carrier call must still be tested separately.
+Answers are short and general. BadaBhai expresses uncertainty about changing program rules and directs callers to an official source or office. This prototype does not yet connect each country's public-benefit information to a curated, verified knowledge base, so do not present it as an eligibility checker or government service.
 
-See [HACKATHON.md](HACKATHON.md) for the participation/submission checklist and why Baseten's `muse-spark-open-1026` instruction does not require changing our Meta Model API setup.
+## Models and limitations
 
-## References
+- Recognition: Meta `muse-voice-transcribe-1.0` with Hindi and English language bias.
+- Answer generation: Meta `muse-spark-1.3`, streaming responses.
+- Speech: local Meta MMS Hindi and English voice models.
+- The phone conversation is half-duplex; speaking over an answer is not yet a reliable interrupt. Press 9 to stop playback.
+- One simultaneous call by default. Measure CPU, memory, and latency before increasing capacity.
+- The MMS models use CC-BY-NC-4.0 licensing. Review the license before commercial deployment.
+- Future languages, government integrations, IVR replacement, village commerce, low-resource speech research, and live translation are proposals, not current features.
 
-- https://dev.meta.ai/docs/overview
-- https://dev.meta.ai/docs/speech-to-text
-- https://dev.meta.ai/docs/api-reference
-- https://huggingface.co/facebook/mms-tts-hin
-- https://huggingface.co/facebook/mms-tts-eng
-- https://developer.exotel.com/docs/agentstream/websocket-protocol
+Windows Server deployment guidance is in [DEPLOY_WINDOWS.md](DEPLOY_WINDOWS.md). Continue work from [HANDOFF.md](HANDOFF.md), and see [HACKATHON.md](HACKATHON.md) for judge/demo positioning.
