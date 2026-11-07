@@ -9,8 +9,7 @@ The application code is under the MIT License. See [LICENSE](LICENSE). Meta's AP
 ## Try the demo
 
 - Open [Live Desk](https://badabhai.shreejientserv.in/dashboard), then call **+91 79 4850 4917**. From a US landline, dial **011 91 79 4850 4917**.
-- India numbers start in Hindi. Other numbers start in English.
-- Press **1** for what the call can do, **2** for English, **3** for Hindi, or **9** to interrupt. Speaking over an answer also interrupts it.
+- Speak in Hindi or English. BadaBhai detects the language from what you say and answers in that language. Talking over an answer interrupts it immediately so you can continue.
 - Words, language, and timings appear only while the call is open. The phone number stays hidden. Nothing from the call is saved.
 - One call at a time. The free Exotel line ends after about three and a half minutes, so ask early. It is not toll-free. If the line is down, open [/backup-demo](https://badabhai.shreejientserv.in/backup-demo). The trial number may stop around 9 November 2026.
 
@@ -28,6 +27,7 @@ This is an independent prototype, not a Meta product and not a government servic
 
 - Hearing: Meta `muse-voice-transcribe-1.0`, biased to Hindi and English.
 - Answers: Meta `muse-wonder-1.0` (Meta Model API cloud) with medium reasoning. Everyday questions stay short and stream to the phone as soon as the first sentence is ready. A public office, address, or phone number uses the same model with Meta web search, and the voice says only what that search found.
+- Language: auto-detected per turn from the caller transcript (Hindi, including romanized Hindi, or English). No keypad language menu.
 - Speech: an Indian voice speaks the answer on the phone line. Meta MMS Hindi and English models are an optional local fallback and stay under CC-BY-NC-4.0.
 
 Wonder and Voice Transcribe run in Meta’s cloud, so this 16 GB Windows host does not need a GPU for the AI brain. Only the spoken voice is synthesized on the server.

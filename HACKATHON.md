@@ -9,7 +9,7 @@ The demo is not a government service, eligibility decision tool, or personal-acc
 ## Demo priorities
 
 1. Open the landing page and the 90-second walkthrough. If the temporary Exotel line is unavailable, use `/backup-demo`.
-2. Open `/dashboard`, then call +91 79 4850 4917. India callers start in Hindi; other callers start in English. Press 1 for what the call can do, 2 for English, 3 for Hindi, or 9 to interrupt.
+2. Open `/dashboard`, then call +91 79 4850 4917. Speak Hindi or English; the call auto-detects language and answers in kind. Talk over an answer to interrupt and continue.
 3. Ask a simple everyday question such as “Photosynthesis kya hai, simple me samjhao?” Then ask for a public office address early in the call, before the free line’s short cutoff.
 4. On Live Desk, show words, country code, language, timings, and interruptions only while the call is open.
 5. Explain the limits honestly: one simultaneous call, Hindi/English only today, no saved calls, and future ideas are not live features.

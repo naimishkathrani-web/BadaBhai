@@ -20,7 +20,7 @@ curl.exe -s https://badabhai.shreejientserv.in/health
 ## Voice / Meta
 - MMS models cache: `C:\Dev\BadaBhai\.cache\huggingface`
 - `CALL_MODE=meta`, `META_CHAT_MODEL=muse-wonder-1.0`, `META_REASONING_EFFORT=medium`
-- Prewarm caches welcome/capabilities audio so the first spoken greeting is fast
+- Prewarm caches welcome/retry audio so the first spoken greeting is fast
 
 ## Exotel
 Private Voicebot WSS URL is in `exotel-url.txt` (not for Git). Paste that into Exotel for `badabhai.shreejientserv.in`.

@@ -36,17 +36,25 @@ def test_meta_sse_ignores_reasoning_and_streams_text(monkeypatch):
 
 
 def test_place_question_uses_meta_web_search():
-    from app.meta import request_for, _lookup_sentences
+    from app.meta import request_for, spoken_sentences
     path, payload = request_for([{'role': 'user', 'content': 'What is the address of the Rajkot labour office?'}], 'en')
     assert path == '/responses'
     assert payload['tools'] == [{'type': 'web_search'}]
     chat_path, chat_payload = request_for([{'role': 'user', 'content': 'What is two plus two?'}], 'en')
     assert chat_path == '/chat/completions'
     assert chat_payload['reasoning_effort'] == 'medium'
-    assert _lookup_sentences([
+    assert chat_payload['max_tokens'] >= 800
+    assert spoken_sentences([
         'I will look up the office.',
         'The labour office is at Jilla Seva Sadan and the number is 0281-2474654.',
-    ]) == ['The labour office is at Jilla Seva Sadan and the number is 0281-2474654.']
+        'Would you like anything else?',
+    ], lookup=True) == ['The labour office is at Jilla Seva Sadan and the number is 0281-2474654.']
+    assert spoken_sentences([
+        'Ayushman Bharat helps families with hospital treatment.',
+        'Would you like me to explain more?',
+        'Let me know if you need anything else.',
+        'media features.',
+    ]) == ['Ayushman Bharat helps families with hospital treatment.']
 
 
 def test_first_sentence_plays_before_generation_finishes(monkeypatch):
@@ -99,28 +107,32 @@ def test_recognition_disconnect_reconnects_without_ending_call(monkeypatch):
     asyncio.run(scenario())
 
 
-def test_keypad_interrupt_cancels_generation_but_preserves_call(monkeypatch):
+def test_voice_barge_in_cancels_generation_and_merges_question(monkeypatch):
     from app.main import Call
     async def scenario():
         begun = asyncio.Event()
-        async def stream(*args):
+        seen = []
+        async def stream(messages, language):
+            seen.append(messages[-1]['content'])
             begun.set()
             await asyncio.sleep(100)
             yield 'Too late.'
-        socket = AsyncMock()
-        socket.receive_json.side_effect = [{'event': 'dtmf', 'dtmf': {'digit': '9'}}, {'event': 'stop'}]
-        call = Call(socket)
+        call = Call(AsyncMock())
         call.sid = 'test'
         monkeypatch.setattr('app.main.meta.stream_sentences', stream)
+        monkeypatch.setattr('app.main.voice.synthesize', lambda *args: bytes(3200))
         worker = asyncio.create_task(call.respond())
         try:
-            call.queue.put_nowait(('question', 'hello'))
+            call.queue.put_nowait(('question', 'photosynthesis'))
             await asyncio.wait_for(begun.wait(), 1)
-            await call.receive()
-            await asyncio.sleep(.05)
+            begun.clear()
+            await call.barge_in('kya hai simple me', method='voice')
+            await asyncio.wait_for(begun.wait(), 1)
             assert not worker.done()
-            assert not call.busy
-            assert socket.send_json.call_args.args[0]['event'] == 'clear'
+            assert seen[0] == 'photosynthesis'
+            assert seen[1] == 'photosynthesis kya hai simple me'
+            assert any(args.args and args.args[0].get('event') == 'clear'
+                       for args in call.ws.send_json.await_args_list)
         finally:
             worker.cancel()
             await asyncio.gather(worker, return_exceptions=True)

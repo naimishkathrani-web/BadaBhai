@@ -22,6 +22,40 @@ LOOKUP_HINTS = (
     'श्रम', 'जिला',
 )
 
+HINDI_ROMAN = re.compile(
+    r'\b(kya|kyun|kyu|hai|hain|hoon|hun|haan|nahi|nahin|batao|bataiye|samjhao|samjhaao|'
+    r'mujhe|mera|meri|mere|aap|aapka|kaise|kaisa|kahan|kidhar|chahiye|krdo|karo|'
+    r'namaste|namaskar|dhanyavad|shukriya|accha|theek|thik|bhai|didi|'
+    r'prakash|sanshlen|sarkari|yojana|davakhana|aspataal|aspataal)\b',
+    re.I,
+)
+
+TRAILING_FLUFF = re.compile(
+    r'(?i)^(would you like|do you want|anything else|let me know|feel free|'
+    r'if you (want|need)|i can also|shall i|press\b|keypad|button|'
+    r'और कुछ|कुछ और|बताइए|बताओ तो|क्या मैं|अगर आप|मैं और|'
+    r'hope (that )?helps|is there anything)\b'
+)
+
+
+def detect_language(text, default='hi'):
+    """Pick Hindi or English from what the caller said, including romanized Hindi."""
+    text = (text or '').strip()
+    if not text:
+        return default
+    if re.search(r'[\u0900-\u097F]', text):
+        return 'hi'
+    letters = re.findall(r'[A-Za-z\u0900-\u097F]', text)
+    if not letters:
+        return default
+    if HINDI_ROMAN.search(text):
+        return 'hi'
+    # Mostly ASCII Latin without Hindi cues → English.
+    latin = sum(1 for ch in letters if 'A' <= ch <= 'Z' or 'a' <= ch <= 'z')
+    if latin / max(1, len(letters)) >= 0.8:
+        return 'en'
+    return default
+
 
 def needs_lookup(messages):
     """Public place, address, and phone questions need a live search."""
@@ -33,13 +67,21 @@ def needs_lookup(messages):
 
 
 def system_prompt(language, lookup=False):
+    spoken = (
+        'simple spoken Hindi in Devanagari script'
+        if language == 'hi'
+        else 'simple spoken Indian English'
+    )
     system = (
         'You are BadaBhai, a calm older sibling on an ordinary phone call. '
         f'You use Meta {os.getenv("META_CHAT_MODEL", "muse-wonder-1.0")} for answers and Meta speech-to-text to hear the caller. '
         'If asked who built your models, say Meta. '
-        f'Reply only in {"simple spoken Hindi in Devanagari" if language == "hi" else "simple spoken Indian English"}. '
-        'Sound like a calm older sibling on a phone call. Start with the answer in the first words. '
-        'One or two short clear sentences that feel useful and confident. No lists and no web addresses. '
+        f'Reply only in {spoken}. '
+        'If the caller mixed Hindi and English, still stay in that reply language. '
+        'Sound like a normal conversation. Start with the answer in the first words. '
+        'Use one short sentence, or two only when needed. No lists and no web addresses. '
+        'Do not ask a follow-up question. Do not offer more help. '
+        'Do not mention keypad buttons, menus, recording, or apps. '
         'Never say you are recording, storing, transcribing, or training on the call. '
         'Never invent a street, a phone number, account data, or a job listing. '
         'Do not decide eligibility or give a medical diagnosis. '
@@ -49,7 +91,7 @@ def system_prompt(language, lookup=False):
     if lookup:
         system += (
             ' This question needs a public address or phone number. Search before you speak. '
-            'Do not say that you are searching. Speak only the result, in Devanagari when the caller is speaking Hindi. '
+            'Do not say that you are searching. Speak only the result, in Devanagari when the reply language is Hindi. '
             'First sentence: the office name, the area, and the phone number if you found them. '
             'If you cannot confirm them, say that in one sentence. Do not guess a street or a number.'
         )
@@ -64,20 +106,21 @@ def request_for(messages, language):
     """Ordinary questions stay on a fast chat call. Place and phone questions use Meta web search."""
     history = _history(messages)
     model = os.getenv('META_CHAT_MODEL', 'muse-wonder-1.0')
+    # Medium reasoning needs headroom; spoken answers stay short via the prompt.
     if needs_lookup(messages):
         return '/responses', {
             'model': model,
             'input': [{'role': 'system', 'content': system_prompt(language, lookup=True)}] + history,
             'tools': [{'type': 'web_search'}],
             'reasoning': {'effort': os.getenv('META_LOOKUP_REASONING_EFFORT', 'medium')},
-            'max_output_tokens': int(os.getenv('META_LOOKUP_MAX_TOKENS', '900')),
+            'max_output_tokens': int(os.getenv('META_LOOKUP_MAX_TOKENS', '1600')),
             'stream': True,
         }
     return '/chat/completions', {
         'model': model,
         'messages': [{'role': 'system', 'content': system_prompt(language)}] + history,
         'reasoning_effort': os.getenv('META_REASONING_EFFORT', 'medium'),
-        'max_tokens': int(os.getenv('META_MAX_TOKENS', '280')),
+        'max_tokens': int(os.getenv('META_MAX_TOKENS', '1200')),
         'stream': True,
     }
 
@@ -151,22 +194,57 @@ def _lookup_sentences(sentences):
     return kept[-1:] if kept else []
 
 
+def _is_fluff(sentence):
+    text = (sentence or '').strip()
+    if not text:
+        return True
+    return bool(TRAILING_FLUFF.search(text))
+
+
+def _is_fragment(sentence):
+    """Drop orphan tails that start mid-thought after a bad split or truncated stream."""
+    text = (sentence or '').strip()
+    if not text:
+        return True
+    if re.search(r'[\u0900-\u097F]', text):
+        return False
+    # English continuations after a bad split almost always start lowercase.
+    return text[0].islower()
+
+
+def spoken_sentences(sentences, lookup=False):
+    """Keep the useful spoken lines and drop trailing helper/chatter sentences."""
+    cleaned = [
+        sentence.strip() for sentence in sentences
+        if sentence and sentence.strip() and not _is_fluff(sentence) and not _is_fragment(sentence)
+    ]
+    if lookup:
+        return _lookup_sentences(cleaned)
+    # Phone calls should stay short even if the model adds a polite closer.
+    return cleaned[:2]
+
+
 async def stream_sentences(messages, language):
     """Yield speakable sentences as Meta generates them, without logging content."""
     path, payload = request_for(messages, language)
+    lookup = path == '/responses'
     try:
-        if path == '/responses':
+        if lookup:
             collected = [sentence async for sentence in _events(path, payload)]
-            spoken = _lookup_sentences(collected)
+            spoken = spoken_sentences(collected, lookup=True)
             if not spoken:
                 raise RuntimeError('Meta returned no answer text')
             for sentence in spoken:
                 yield sentence
             return
-        emitted = False
+        emitted = []
         async for sentence in _events(path, payload):
-            emitted = True
+            if _is_fluff(sentence) or _is_fragment(sentence):
+                continue
+            emitted.append(sentence)
             yield sentence
+            if len(emitted) >= 2:
+                return
         if not emitted:
             raise RuntimeError('Meta returned no answer text')
     except httpx.HTTPStatusError:
@@ -177,16 +255,23 @@ async def stream_sentences(messages, language):
             'model': payload['model'],
             'messages': payload['input'],
             'reasoning_effort': os.getenv('META_REASONING_EFFORT', 'medium'),
-            'max_tokens': int(os.getenv('META_MAX_TOKENS', '280')),
+            'max_tokens': int(os.getenv('META_MAX_TOKENS', '1200')),
             'stream': True,
         }
+        emitted = []
         async for sentence in _events('/chat/completions', fallback):
+            if _is_fluff(sentence) or _is_fragment(sentence):
+                continue
+            emitted.append(sentence)
             yield sentence
+            if len(emitted) >= 2:
+                return
 
 
 async def connect_asr(language='hi'):
-    """Open Meta Voice Transcribe with a stronger bias for the active call language."""
-    bias = ['Hindi', 'English'] if language == 'hi' else ['English', 'Hindi']
+    """Open Meta Voice Transcribe with Hindi+English bias so either language is heard."""
+    # Keep both languages available so auto-detect can switch without a keypad.
+    bias = ['Hindi', 'English']
     socket = await websockets.connect(
         os.getenv('META_ASR_URL', 'wss://api.meta.ai/v1/asr/realtime'),
         open_timeout=20, max_size=2**20,

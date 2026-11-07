@@ -5,7 +5,7 @@ The local repository changes are pushed to `main`. Continue from the current `ma
 ## Current app behavior
 
 - Exotel Voicebot streams calls to Meta Muse Voice Transcribe, Muse Wonder, and local Meta MMS Hindi/English voices.
-- Caller IDs beginning in `+91` default to Hindi; other caller IDs default to English. Press 1 for what the call can do, 2 for English, 3 for Hindi, and 9 to interrupt. Speaking over an answer also interrupts.
+- Caller IDs beginning in `+91` get a Hindi welcome; other IDs get English. After that, each turn auto-detects Hindi or English from what the caller said. Speaking over an answer interrupts immediately and the new words are merged with the latest question.
 - Live Desk at `/dashboard` shows words, country code, language, and timings only while a call is open, then clears. Phone numbers stay hidden.
 - `/backup-demo` is the Hindi or English walkthrough if the temporary Exotel line +91 79 4850 4917 is unavailable.
 - Calls are not saved. There is no call archive.

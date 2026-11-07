@@ -164,40 +164,32 @@ def test_meta_errors_are_not_exposed(monkeypatch):
         assert 'private-key' not in result.text
 
 
-def test_language_key_is_kept_during_welcome():
-    from app.main import Call
-
-    async def scenario():
-        socket = AsyncMock()
-        socket.receive_json.side_effect = [
-            {'event': 'dtmf', 'dtmf': {'digit': '2'}}, {'event': 'stop'}]
-        call = Call(socket)
-        call.asr = object()
-        call.busy = True
-        await call.receive()
-        assert call.language == 'en'
-        assert call.queue.get_nowait() == ('language', 'en')
-
-    asyncio.run(scenario())
-
-
-def test_keypad_one_queues_capabilities_and_three_switches_to_hindi():
+def test_keypad_digits_are_ignored():
     from app.main import Call
 
     async def scenario():
         socket = AsyncMock()
         socket.receive_json.side_effect = [
             {'event': 'dtmf', 'dtmf': {'digit': '1'}},
-            {'event': 'dtmf', 'dtmf': {'digit': '3'}},
+            {'event': 'dtmf', 'dtmf': {'digit': '2'}},
+            {'event': 'dtmf', 'dtmf': {'digit': '9'}},
             {'event': 'stop'},
         ]
         call = Call(socket)
         call.sid = 'test'
+        call.language = 'hi'
         await call.receive()
-        assert call.queue.get_nowait() == ('capabilities', 'hi')
         assert call.language == 'hi'
+        assert call.queue.empty()
 
     asyncio.run(scenario())
+
+
+def test_detect_language_from_caller_text():
+    from app.meta import detect_language
+    assert detect_language('प्रकाश संश्लेषण क्या है?') == 'hi'
+    assert detect_language('Photosynthesis kya hai simple me') == 'hi'
+    assert detect_language('What is a feature phone?') == 'en'
 
 
 def test_answer_failure_keeps_call_open(monkeypatch):

@@ -28,13 +28,10 @@ from app.audio import Resampler, chunks
 from app.live import dashboard
 
 log = logging.getLogger('badabhai')
-WELCOME_HI = 'नमस्ते, मैं बड़ा भाई हूँ। हिंदी या अंग्रेज़ी में पूछिए। एक दबाएँ तो मैं बताऊँ क्या कर सकता हूँ, दो अंग्रेज़ी के लिए, तीन हिंदी के लिए, और नौ दबाएँ तो मैं रुक जाऊँ।'
-WELCOME_EN = "Hello, I'm Bada Bhai. Ask me anything in Hindi or English. Press 1 for what I can do, 2 for English, 3 for Hindi, or 9 if you want me to stop."
+WELCOME_HI = 'नमस्ते, मैं बड़ा भाई हूँ। हिंदी या अंग्रेज़ी में अपना सवाल बोलिए। बात करते हुए बोलोगे तो मैं रुककर सुन लूँगा।'
+WELCOME_EN = "Hello, I'm Bada Bhai. Ask me in Hindi or English. If you talk while I'm speaking, I'll stop and listen."
 RETRY_HI = 'माफ़ कीजिए, फिर से पूछिए।'
 RETRY_EN = 'Sorry, please ask that again.'
-CAPABILITIES_EN = 'I explain everyday questions in simple Hindi or English, and I can repeat anything. Press 2 for English, 3 for Hindi, or just talk over me if you want to ask something else.'
-CAPABILITIES_HI = 'मैं रोज़मर्रा के सवाल आसान हिंदी या अंग्रेज़ी में समझाता हूँ, और दोहरा भी सकता हूँ। अंग्रेज़ी के लिए दो दबाएँ, या बीच में बोलकर नया सवाल पूछें।'
-CAPABILITY_AUDIO = {}
 WAIT_TONE_AUDIO = {}
 
 
@@ -65,20 +62,9 @@ def wait_tone(rate):
 async def lifespan(app):
     if os.getenv('PREWARM_VOICES', '0') == '1' and os.getenv('CALL_MODE') != 'echo':
         log.warning('Preparing both voices and welcome audio before accepting calls')
-        audio_dir = Path(__file__).resolve().parents[1] / 'runtime' / 'audio'
-        audio_dir.mkdir(parents=True, exist_ok=True)
-        for language, text in [('hi', WELCOME_HI), ('en', WELCOME_EN), ('hi', RETRY_HI), ('en', RETRY_EN),
-                               ('hi', CAPABILITIES_HI), ('en', CAPABILITIES_EN)]:
+        for language, text in [('hi', WELCOME_HI), ('en', WELCOME_EN), ('hi', RETRY_HI), ('en', RETRY_EN)]:
             for rate in (8000, 16000, 24000):
-                pcm = await asyncio.to_thread(voice.synthesize, text, language, rate)
-                if text in (CAPABILITIES_HI, CAPABILITIES_EN):
-                    CAPABILITY_AUDIO[(language, rate)] = pcm
-                    if rate == 8000:
-                        output = io.BytesIO()
-                        with wave.open(output, 'wb') as wav:
-                            wav.setparams((1, 2, rate, 0, 'NONE', 'not compressed'))
-                            wav.writeframes(pcm)
-                        (audio_dir / f'capabilities_{language}.wav').write_bytes(output.getvalue())
+                await asyncio.to_thread(voice.synthesize, text, language, rate)
         log.warning('Voice startup complete: ready to accept calls')
     # Calls are not saved. The live desk shows words only while a call is open.
     yield
@@ -313,6 +299,8 @@ class Call:
         self.in_answer = False
         self.playback_started_at = 0.0
         self.last_assistant_text = ''
+        self.pending_question = ''
+        self.current_question = ''
 
     async def publish(self, event, **data):
         if self.call_id:
@@ -336,8 +324,56 @@ class Call:
         overlap = len(spoken_words & heard_words) / max(1, len(heard_words))
         return overlap >= 0.7
 
+    async def set_language(self, language):
+        if language not in ('hi', 'en') or language == self.language:
+            return
+        self.language = language
+        live_state['language'] = language
+        await self.publish('language', language=language)
+
+    def _merge_question(self, text):
+        text = (text or '').strip()
+        if not text:
+            return self.pending_question
+        if self.pending_question:
+            # Keep earlier fragments when the caller continues or interrupts mid-thought.
+            if text.casefold() in self.pending_question.casefold():
+                merged = self.pending_question
+            elif self.pending_question.casefold() in text.casefold():
+                merged = text
+            else:
+                merged = (self.pending_question + ' ' + text).strip()
+        else:
+            merged = text
+        self.pending_question = merged[:2000]
+        return self.pending_question
+
+    def _drain_queued_questions(self):
+        kept = []
+        fragments = []
+        while not self.queue.empty():
+            kind, payload = self.queue.get_nowait()
+            if kind == 'question':
+                fragments.append(payload)
+            else:
+                kept.append((kind, payload))
+        for item in kept:
+            self.queue.put_nowait(item)
+        return fragments
+
+    async def queue_question(self, text, *, interrupted=False):
+        merged = self._merge_question(text)
+        for fragment in self._drain_queued_questions():
+            merged = self._merge_question(fragment)
+        if not merged or self.queue.full():
+            return
+        self.request_started = time.perf_counter()
+        self.queue.put_nowait(('question', merged))
+        if not interrupted:
+            self.pending_question = ''
+
     async def barge_in(self, text, method='voice'):
-        """Stop current playback immediately so the caller can redirect, Gemini-style."""
+        """Stop current playback immediately so the caller can redirect."""
         self.interrupted.set()
         try:
             await self.send('clear')
@@ -348,9 +384,11 @@ class Call:
             self.turn_task.cancel()
         log.warning('Caller interrupted playback using %s', method)
         await self.publish('interrupt', method=method)
-        if text and not self.queue.full():
-            self.request_started = time.perf_counter()
-            self.queue.put_nowait(('question', text[:2000]))
+        if text:
+            # Keep the unfinished question and append what the caller just added.
+            if self.current_question and not self.pending_question:
+                self.pending_question = self.current_question
+            await self.queue_question(text, interrupted=True)
 
     async def say(self, text, language, pcm=None):
         was_busy = self.busy
@@ -444,34 +482,8 @@ class Call:
             elif kind == 'mark' and event.get('mark', {}).get('name') == self.mark:
                 self.playback.set()
             elif kind == 'dtmf':
-                digit = event.get('dtmf', {}).get('digit')
-                if digit == '9':
-                    await self.barge_in('', method='keypad')
-                if digit == '1' and not self.queue.full():
-                    self.queue.put_nowait(('capabilities', self.language))
-                elif digit == '2' and not self.queue.full():
-                    self.language = 'en'
-                    live_state['language'] = self.language
-                    await self.publish('language', language=self.language)
-                    # Re-open ASR with English-first bias for better recognition.
-                    try:
-                        if self.asr:
-                            await self.asr.close()
-                    except Exception:
-                        pass
-                    self.asr = None
-                    self.queue.put_nowait(('language', self.language))
-                elif digit == '3' and not self.queue.full():
-                    self.language = 'hi'
-                    live_state['language'] = self.language
-                    await self.publish('language', language=self.language)
-                    try:
-                        if self.asr:
-                            await self.asr.close()
-                    except Exception:
-                        pass
-                    self.asr = None
-                    self.queue.put_nowait(('language', self.language))
+                # Keypad menus were removed; voice barge-in handles redirects.
+                pass
             elif kind == 'stop':
                 self.exotel_call_sid = self.exotel_call_sid or event.get('stop', {}).get('call_sid')
                 await self.publish('call_state', status='ended')
@@ -513,19 +525,18 @@ class Call:
                         self.transcript.append({'role': 'caller', 'text': text[:2000],
                                                 'at': datetime.now(timezone.utc).isoformat()})
                         await self.publish('transcript_final', text=text[:2000])
-                        # Voice barge-in only during answer playback (not greeting),
-                        # so echo/noise cannot wipe the welcome.
-                        if self.in_answer and self.busy and len(text) >= 10 and (
+                        await self.set_language(meta.detect_language(text, default=self.language))
+                        # Stop immediately when the caller talks over welcome or answer audio.
+                        if self.busy and len(text) >= 4 and (
                                 self.playback_started_at
-                                and time.perf_counter() - self.playback_started_at >= 0.8):
+                                and time.perf_counter() - self.playback_started_at >= 0.25):
                             failures = 0
                             await self.barge_in(text, method='voice')
                             continue
-                        if not self.busy and not self.queue.full():
+                        if not self.busy:
                             failures = 0
-                            self.request_started = time.perf_counter()
                             log.warning('Completed speech turn received; queued for answer')
-                            self.queue.put_nowait(('question', text[:2000]))
+                            await self.queue_question(text)
             except (ConnectionClosed, RuntimeError) as exc:
                 log.warning('Recognition stream interrupted: %s', type(exc).__name__)
             self.asr = None
@@ -613,21 +624,17 @@ class Call:
             if kind == 'welcome':
                 text = WELCOME_HI if self.language == 'hi' else WELCOME_EN
                 await self.say(text, self.language)
-            elif kind == 'capabilities':
-                clip = CAPABILITY_AUDIO.get((text, self.rate))
-                if clip:
-                    await self.say('', text, pcm=clip)
-                else:
-                    await self.say(CAPABILITIES_HI if text == 'hi' else CAPABILITIES_EN, text)
-                await self.say('अब अपना सवाल पूछिए।' if text == 'hi' else 'Please ask your question now.', text)
-            elif kind == 'language':
-                await self.say('अब अपना सवाल पूछिए।' if text == 'hi'
-                               else 'Please ask your question now.', text)
             elif kind == 'notice':
                 await self.say(RETRY_HI if self.language == 'hi' else RETRY_EN, self.language)
             else:
                 self.busy = True
                 try:
+                    await self.set_language(meta.detect_language(text, default=self.language))
+                    # Include any extra fragments the caller added while interrupting.
+                    if self.pending_question:
+                        text = self._merge_question(text)
+                        self.pending_question = ''
+                    self.current_question = text
                     messages = self.history + [{'role': 'user', 'content': text}]
                     model_messages = list(messages)
                     await self.publish('assistant_state', status='thinking')
@@ -643,7 +650,11 @@ class Call:
                             raise
                         reply = '[Reply interrupted by caller]'
                     log.warning('Spoken answer turn completed in %.2fs', time.perf_counter() - started)
-                    self.history = (messages + [{'role': 'assistant', 'content': reply}])[-12:]
+                    # Interrupted turns stay out of history; barge-in re-asks with merged text.
+                    if not (self.interrupted.is_set() or reply.endswith('[Interrupted by caller]')
+                            or reply == '[Reply interrupted by caller]'):
+                        self.history = (messages + [{'role': 'assistant', 'content': reply}])[-12:]
+                        self.current_question = ''
                     await self.publish('assistant_state', status='complete')
                     await self.publish('performance', stage='turn_complete', key='total_ms',
                                        ms=round((time.perf_counter() - (self.turn_started or started)) * 1000, 1))

@@ -36,7 +36,7 @@
     <li>Exotel Voicebot opens a WebSocket to our app and streams 8 kHz telephone audio both ways.</li>
     <li>We resample that audio and send it to Meta Muse Voice Transcribe for Hindi or English speech-to-text.</li>
     <li>The final transcript goes to Muse Wonder 1.0 with medium reasoning. Everyday questions get a short answer. A public office, address, or phone question uses Meta web search on the Responses API.</li>
-    <li>An Indian neural voice speaks the answer back through Exotel. There is no wait tone. The caller can press 1, 2, 3, or 9, or speak over the answer.</li>
+    <li>An Indian neural voice speaks the answer back through Exotel. There is no wait tone. Language is auto-detected from the caller’s words. Speaking over the answer interrupts it immediately.</li>
     <li>Live Desk at <code>/dashboard</code> shows the words and timings only while the call is open. Nothing is saved.</li>
   </ol>
 </section>
