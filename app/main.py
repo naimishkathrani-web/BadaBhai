@@ -641,7 +641,11 @@ class Call:
                     log.warning('Requesting Meta answer')
                     started = time.perf_counter()
                     if meta.needs_lookup(model_messages):
-                        await self.say('पता देख रहा हूँ।' if self.language == 'hi' else 'Let me check that.', self.language)
+                        if meta.needs_travel_help(model_messages):
+                            tip = 'एक पल, ट्रेन और ठहरने की जानकारी देख रहा हूँ।' if self.language == 'hi' else 'One moment, checking trains and stay options.'
+                        else:
+                            tip = 'पता देख रहा हूँ।' if self.language == 'hi' else 'Let me check that.'
+                        await self.say(tip, self.language)
                     self.turn_task = asyncio.create_task(self.speak_answer(model_messages, self.language))
                     try:
                         reply = await self.turn_task

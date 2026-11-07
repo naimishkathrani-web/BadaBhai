@@ -18,8 +18,19 @@ def key():
 LOOKUP_HINTS = (
     'address', 'phone', 'contact', 'number', 'office', 'helpline', 'where', 'location',
     'labour', 'labor', 'worker', 'district', 'pata', 'number',
+    'train', 'railway', 'irctc', 'hotel', 'resort', 'tent', 'booking', 'itinerary',
+    'ticket', 'fare', 'price', 'cost', 'flight', 'bus', 'tourism', 'utsav', 'temple',
     'पता', 'नंबर', 'नम्बर', 'दफ्तर', 'कार्यालय', 'फोन', 'संपर्क', 'कहाँ', 'कहां', 'हेल्पलाइन',
-    'श्रम', 'जिला',
+    'श्रम', 'जिला', 'ट्रेन', 'रेल', 'होटल', 'रिसॉर्ट', 'टेंट', 'बुकिंग', 'किराया', 'किराया',
+    'दाम', 'खर्च', 'यात्रा', 'मंदिर', 'उत्सव', 'टिकट',
+)
+
+TRAVEL_HINTS = (
+    'train', 'railway', 'irctc', 'hotel', 'resort', 'tent', 'booking', 'itinerary',
+    'ticket', 'fare', 'price', 'cost', 'flight', 'bus', 'tourism', 'utsav', 'temple',
+    'trip', 'travel', 'package',
+    'ट्रेन', 'रेल', 'होटल', 'रिसॉर्ट', 'टेंट', 'बुकिंग', 'दाम', 'खर्च', 'यात्रा', 'मंदिर',
+    'उत्सव', 'टिकट', 'किराया', 'घूम',
 )
 
 HINDI_ROMAN = re.compile(
@@ -57,16 +68,34 @@ def detect_language(text, default='hi'):
     return default
 
 
-def needs_lookup(messages):
-    """Public place, address, and phone questions need a live search."""
-    text = next((item.get('content') or '' for item in reversed(messages) if item.get('role') == 'user'), '')
+def _latest_user_text(messages):
+    return next((item.get('content') or '' for item in reversed(messages) if item.get('role') == 'user'), '')
+
+
+def needs_travel_help(messages):
+    text = _latest_user_text(messages)
     folded = text.casefold()
+    if re.search(
+        r'\b(train|railway|irctc|hotel|resort|tent|booking|itinerary|ticket|fare|price|cost|'
+        r'flight|bus|tourism|utsav|temple|trip|travel|package)\b',
+        folded,
+    ):
+        return True
+    return any(hint in text for hint in TRAVEL_HINTS if not hint.isascii())
+
+
+def needs_lookup(messages):
+    """Live facts: offices/phones and travel bookings need a fresh search."""
+    text = _latest_user_text(messages)
+    folded = text.casefold()
+    if needs_travel_help(messages):
+        return True
     if re.search(r'\b(address|phone|helpline|office|location|contact|labour|labor|worker|district|pata)\b', folded):
         return True
     return any(hint in text for hint in LOOKUP_HINTS if not hint.isascii())
 
 
-def system_prompt(language, lookup=False):
+def system_prompt(language, lookup=False, travel=False):
     spoken = (
         'simple spoken Hindi in Devanagari script'
         if language == 'hi'
@@ -86,9 +115,19 @@ def system_prompt(language, lookup=False):
         'Never invent a street, a phone number, account data, or a job listing. '
         'Do not decide eligibility or give a medical diagnosis. '
         'Do not ask for Aadhaar, OTP, bank numbers, or PINs. '
-        'For danger, tell them to contact local emergency help.'
+        'For danger, tell them to contact local emergency help. '
+        'If you already said you lack a detail, do not repeat that sentence. Give a new concrete next step instead.'
     )
-    if lookup:
+    if lookup and travel:
+        system += (
+            ' This is a travel planning question. Search before you speak. '
+            'Do not say that you are searching. '
+            'Sentence one: the best confirmed train, bus, or route fact, with name or number if found. '
+            'Sentence two: a hotel, resort, or tent price range if found, plus one nearby place tip if relevant. '
+            'If a fare or train cannot be confirmed for their dates, say that once and tell them to verify on IRCTC or the official tourism booking page. '
+            'Do not invent exact fares, train numbers, or hotel names you did not find.'
+        )
+    elif lookup:
         system += (
             ' This question needs a public address or phone number. Search before you speak. '
             'Do not say that you are searching. Speak only the result, in Devanagari when the reply language is Hindi. '
@@ -103,14 +142,15 @@ def _history(messages):
 
 
 def request_for(messages, language):
-    """Ordinary questions stay on a fast chat call. Place and phone questions use Meta web search."""
+    """Ordinary questions stay on a fast chat call. Live facts use Meta web search."""
     history = _history(messages)
     model = os.getenv('META_CHAT_MODEL', 'muse-wonder-1.0')
+    travel = needs_travel_help(messages)
     # Medium reasoning needs headroom; spoken answers stay short via the prompt.
     if needs_lookup(messages):
         return '/responses', {
             'model': model,
-            'input': [{'role': 'system', 'content': system_prompt(language, lookup=True)}] + history,
+            'input': [{'role': 'system', 'content': system_prompt(language, lookup=True, travel=travel)}] + history,
             'tools': [{'type': 'web_search'}],
             'reasoning': {'effort': os.getenv('META_LOOKUP_REASONING_EFFORT', 'medium')},
             'max_output_tokens': int(os.getenv('META_LOOKUP_MAX_TOKENS', '1600')),
@@ -178,20 +218,33 @@ def _search_status(sentence):
         return False
     folded = sentence.casefold()
     markers = (
-        'dhoondh', 'looking', 'look up', 'let me', 'found a', "i'll open", 'i will open',
-        'check', 'confirm', 'रहा हूँ', 'रही हूँ', 'रुक', 'pakka', 'पक्का', 'suchi', 'सूची',
-        'mil gaya', 'bata raha', 'bata rahi', 'खोल', 'देख',
+        'dhoondh', 'looking', 'look up', 'let me search', 'found a', "i'll open", 'i will open',
+        'still searching', 'रहा हूँ', 'रही हूँ', 'ढूंढ', 'ढूँढ', 'suchi', 'सूची',
+        'mil gaya', 'bata raha', 'bata rahi', 'खोज', 'देखकर बताता', 'देख कर बताता',
     )
     return any(marker in folded or marker in sentence for marker in markers)
 
 
+def _looks_factual(sentence):
+    folded = sentence.casefold()
+    if _has_phone_or_digit(sentence):
+        return True
+    cues = (
+        'train', 'express', 'special', 'tent', 'hotel', 'resort', 'rupee', 'rs', 'km',
+        'temple', 'bhuj', 'rajkot', 'irctc', 'night', 'morning',
+        'ट्रेन', 'स्पेशल', 'एक्सप्रेस', 'टेंट', 'होटल', 'रिसॉर्ट', 'रुपये', 'किलो',
+        'मंदिर', 'भुज', 'राजकोट', 'हज़ार', 'हजार', 'किराया', 'दाम',
+    )
+    return any(cue in folded or cue in sentence for cue in cues)
+
+
 def _lookup_sentences(sentences):
-    """On the phone, speak only the confirmed place or number, not the search chatter."""
+    """On the phone, speak confirmed facts, not search chatter."""
     kept = [sentence for sentence in sentences if not _search_status(sentence)]
-    with_digits = [sentence for sentence in kept if _has_phone_or_digit(sentence)]
-    if with_digits:
-        return with_digits[-1:]
-    return kept[-1:] if kept else []
+    factual = [sentence for sentence in kept if _looks_factual(sentence)]
+    chosen = factual or kept
+    # Travel answers often need two short facts: route + stay/cost.
+    return chosen[:2]
 
 
 def _is_fluff(sentence):
@@ -224,6 +277,27 @@ def spoken_sentences(sentences, lookup=False):
     return cleaned[:2]
 
 
+async def _chat_fallback(messages, language, model):
+    travel = needs_travel_help(messages)
+    fallback = {
+        'model': model,
+        'messages': [{'role': 'system', 'content': system_prompt(language, travel=travel)}] + _history(messages),
+        'reasoning_effort': os.getenv('META_REASONING_EFFORT', 'medium'),
+        'max_tokens': int(os.getenv('META_MAX_TOKENS', '1200')),
+        'stream': True,
+    }
+    emitted = []
+    async for sentence in _events('/chat/completions', fallback):
+        if _is_fluff(sentence) or _is_fragment(sentence):
+            continue
+        emitted.append(sentence)
+        yield sentence
+        if len(emitted) >= 2:
+            return
+    if not emitted:
+        raise RuntimeError('Meta returned no answer text')
+
+
 async def stream_sentences(messages, language):
     """Yield speakable sentences as Meta generates them, without logging content."""
     path, payload = request_for(messages, language)
@@ -232,9 +306,12 @@ async def stream_sentences(messages, language):
         if lookup:
             collected = [sentence async for sentence in _events(path, payload)]
             spoken = spoken_sentences(collected, lookup=True)
-            if not spoken:
-                raise RuntimeError('Meta returned no answer text')
-            for sentence in spoken:
+            if spoken:
+                for sentence in spoken:
+                    yield sentence
+                return
+            logging.getLogger('badabhai').warning('Search answer had no speakable lines; falling back')
+            async for sentence in _chat_fallback(messages, language, payload['model']):
                 yield sentence
             return
         emitted = []
@@ -251,21 +328,8 @@ async def stream_sentences(messages, language):
         if path != '/responses':
             raise
         logging.getLogger('badabhai').warning('Search answer was rejected; answering without search')
-        fallback = {
-            'model': payload['model'],
-            'messages': payload['input'],
-            'reasoning_effort': os.getenv('META_REASONING_EFFORT', 'medium'),
-            'max_tokens': int(os.getenv('META_MAX_TOKENS', '1200')),
-            'stream': True,
-        }
-        emitted = []
-        async for sentence in _events('/chat/completions', fallback):
-            if _is_fluff(sentence) or _is_fragment(sentence):
-                continue
-            emitted.append(sentence)
+        async for sentence in _chat_fallback(messages, language, payload['model']):
             yield sentence
-            if len(emitted) >= 2:
-                return
 
 
 async def connect_asr(language='hi'):

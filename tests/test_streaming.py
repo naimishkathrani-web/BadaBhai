@@ -36,10 +36,17 @@ def test_meta_sse_ignores_reasoning_and_streams_text(monkeypatch):
 
 
 def test_place_question_uses_meta_web_search():
-    from app.meta import request_for, spoken_sentences
+    from app.meta import request_for, spoken_sentences, needs_travel_help
     path, payload = request_for([{'role': 'user', 'content': 'What is the address of the Rajkot labour office?'}], 'en')
     assert path == '/responses'
     assert payload['tools'] == [{'type': 'web_search'}]
+    travel_path, travel_payload = request_for([{
+        'role': 'user',
+        'content': 'Rajkot se Bhuj Rann Utsav ke liye train aur tent booking cost batao',
+    }], 'hi')
+    assert travel_path == '/responses'
+    assert travel_payload['tools'] == [{'type': 'web_search'}]
+    assert needs_travel_help([{'role': 'user', 'content': 'Rajkot se Bhuj train aur tent cost'}])
     chat_path, chat_payload = request_for([{'role': 'user', 'content': 'What is two plus two?'}], 'en')
     assert chat_path == '/chat/completions'
     assert chat_payload['reasoning_effort'] == 'medium'
@@ -49,6 +56,14 @@ def test_place_question_uses_meta_web_search():
         'The labour office is at Jilla Seva Sadan and the number is 0281-2474654.',
         'Would you like anything else?',
     ], lookup=True) == ['The labour office is at Jilla Seva Sadan and the number is 0281-2474654.']
+    assert spoken_sentences([
+        'मैं दाम देखकर बताता हूँ।',
+        'राजकोट से ०९४४५ राजकोट–भुज स्पेशल ट्रेन दिख रही है।',
+        'रण उत्सव टेंट का दाम करीब छह हज़ार से बारह हज़ार रुपये प्रति व्यक्ति दिख रहा है।',
+    ], lookup=True) == [
+        'राजकोट से ०९४४५ राजकोट–भुज स्पेशल ट्रेन दिख रही है।',
+        'रण उत्सव टेंट का दाम करीब छह हज़ार से बारह हज़ार रुपये प्रति व्यक्ति दिख रहा है।',
+    ]
     assert spoken_sentences([
         'Ayushman Bharat helps families with hospital treatment.',
         'Would you like me to explain more?',
