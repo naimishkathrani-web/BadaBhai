@@ -128,11 +128,13 @@ def system_prompt(language, lookup=False, travel=False):
     if lookup and travel:
         system += (
             ' This is a travel planning question. Search before you speak. '
-            'Do not say that you are searching. '
-            'Sentence one: the best confirmed train, bus, or route fact, with name or number if found. '
-            'Sentence two: a hotel, resort, or tent price range if found, plus one nearby place tip if relevant. '
-            'If a fare or train cannot be confirmed for their dates, say that once and tell them to verify on IRCTC or the official tourism booking page. '
-            'Do not invent exact fares, train numbers, or hotel names you did not find.'
+            'Do not say that you are searching. Answer only what they asked first. '
+            'If they asked ticket/fare: give the best confirmed train or bus with class-wise fare range if found. '
+            'If they asked hotel/tent/resort: give a named stay area or property type with a price range if found. '
+            'If they asked for an itinerary: sentence one is day-1 travel, sentence two is stay or day-2 place with cost. '
+            'Always say date-sensitive fares must be rechecked on IRCTC or the official booking page. '
+            'Do not invent exact fares, train numbers, or hotel names you did not find. '
+            'Do not refuse with the same vague line twice; give the best found numbers or one clear next step.'
         )
     elif lookup:
         system += (
