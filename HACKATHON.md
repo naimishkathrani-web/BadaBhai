@@ -2,7 +2,7 @@
 
 ## Project
 
-BadaBhai brings practical voice AI to an ordinary phone call. It demonstrates a Hindi/English Exotel bridge to Meta Muse Voice Transcribe, Muse Spark, and local Meta MMS speech. The prototype answers everyday questions, explains topics simply, can repeat key points, expresses uncertainty, and directs callers to official sources for current public-service rules.
+BadaBhai brings practical voice AI to an ordinary phone call. It demonstrates a Hindi/English Exotel bridge to Meta Muse Voice Transcribe, Muse Wonder, and local Meta MMS speech. The prototype answers everyday questions, explains topics simply, can repeat key points, expresses uncertainty, and directs callers to official sources for current public-service rules.
 
 The demo is not a government service, eligibility decision tool, or personal-account assistant. The +91 79 4850 4917 line is a temporary Exotel judging number, not toll-free. Live Desk shows words only while a call is open. The app does not save the call.
 

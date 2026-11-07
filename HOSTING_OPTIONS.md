@@ -18,7 +18,7 @@ Sources:
 
 ## Performance decisions
 
-The existing Muse Spark model runs in Meta's cloud, not on the laptop. A local GPU would accelerate local speech synthesis, not remove Meta/network/ASR latency. No sub-800 ms total-loop performance is promised.
+The existing Muse Wonder model runs in Meta's cloud, not on the laptop. A local GPU would accelerate local speech synthesis, not remove Meta/network/ASR latency. No sub-800 ms total-loop performance is promised.
 
 Implemented: minimal reasoning, direct short answers, text streaming into bounded sentence buffers, synthesis/playback overlap, preloaded voices, three recognition reconnect attempts, press-9 playback clearing and generation cancellation, and one simultaneous call by default.
 

@@ -35,10 +35,11 @@ def needs_lookup(messages):
 def system_prompt(language, lookup=False):
     system = (
         'You are BadaBhai, a calm older sibling on an ordinary phone call. '
-        f'You use Meta {os.getenv("META_CHAT_MODEL", "muse-spark-1.3")} for answers and Meta speech-to-text to hear the caller. '
+        f'You use Meta {os.getenv("META_CHAT_MODEL", "muse-wonder-1.0")} for answers and Meta speech-to-text to hear the caller. '
         'If asked who built your models, say Meta. '
         f'Reply only in {"simple spoken Hindi in Devanagari" if language == "hi" else "simple spoken Indian English"}. '
-        'Sound like a normal conversation. Start with the answer. One or two short sentences. No lists and no web addresses. '
+        'Sound like a calm older sibling on a phone call. Start with the answer in the first words. '
+        'One or two short clear sentences that feel useful and confident. No lists and no web addresses. '
         'Never say you are recording, storing, transcribing, or training on the call. '
         'Never invent a street, a phone number, account data, or a job listing. '
         'Do not decide eligibility or give a medical diagnosis. '
@@ -62,21 +63,21 @@ def _history(messages):
 def request_for(messages, language):
     """Ordinary questions stay on a fast chat call. Place and phone questions use Meta web search."""
     history = _history(messages)
-    model = os.getenv('META_CHAT_MODEL', 'muse-spark-1.3')
+    model = os.getenv('META_CHAT_MODEL', 'muse-wonder-1.0')
     if needs_lookup(messages):
         return '/responses', {
             'model': model,
             'input': [{'role': 'system', 'content': system_prompt(language, lookup=True)}] + history,
             'tools': [{'type': 'web_search'}],
-            'reasoning': {'effort': os.getenv('META_LOOKUP_REASONING_EFFORT', 'low')},
-            'max_output_tokens': int(os.getenv('META_LOOKUP_MAX_TOKENS', '2000')),
+            'reasoning': {'effort': os.getenv('META_LOOKUP_REASONING_EFFORT', 'medium')},
+            'max_output_tokens': int(os.getenv('META_LOOKUP_MAX_TOKENS', '900')),
             'stream': True,
         }
     return '/chat/completions', {
         'model': model,
         'messages': [{'role': 'system', 'content': system_prompt(language)}] + history,
-        'reasoning_effort': os.getenv('META_REASONING_EFFORT', 'minimal'),
-        'max_tokens': int(os.getenv('META_MAX_TOKENS', '400')),
+        'reasoning_effort': os.getenv('META_REASONING_EFFORT', 'medium'),
+        'max_tokens': int(os.getenv('META_MAX_TOKENS', '280')),
         'stream': True,
     }
 
@@ -175,8 +176,8 @@ async def stream_sentences(messages, language):
         fallback = {
             'model': payload['model'],
             'messages': payload['input'],
-            'reasoning_effort': os.getenv('META_REASONING_EFFORT', 'minimal'),
-            'max_tokens': int(os.getenv('META_MAX_TOKENS', '400')),
+            'reasoning_effort': os.getenv('META_REASONING_EFFORT', 'medium'),
+            'max_tokens': int(os.getenv('META_MAX_TOKENS', '280')),
             'stream': True,
         }
         async for sentence in _events('/chat/completions', fallback):

@@ -35,7 +35,7 @@
     <li>The caller dials the Exotel number on a feature phone or any ordinary phone.</li>
     <li>Exotel Voicebot opens a WebSocket to our app and streams 8 kHz telephone audio both ways.</li>
     <li>We resample that audio and send it to Meta Muse Voice Transcribe for Hindi or English speech-to-text.</li>
-    <li>The final transcript goes to Muse Spark 1.3. Everyday questions get a short answer. A public office, address, or phone question uses Meta web search on the Responses API.</li>
+    <li>The final transcript goes to Muse Wonder 1.0 with medium reasoning. Everyday questions get a short answer. A public office, address, or phone question uses Meta web search on the Responses API.</li>
     <li>An Indian neural voice speaks the answer back through Exotel. There is no wait tone. The caller can press 1, 2, 3, or 9, or speak over the answer.</li>
     <li>Live Desk at <code>/dashboard</code> shows the words and timings only while the call is open. Nothing is saved.</li>
   </ol>
@@ -47,10 +47,10 @@
     <thead><tr><th>Model / layer</th><th>Role in BadaBhai</th></tr></thead>
     <tbody>
       <tr><td><strong>Meta Voice Transcribe</strong></td><td>Hears the caller on a noisy phone line. Hindi and English. Estimate about 0.8s after the caller stops speaking.</td></tr>
-      <tr><td><strong>Muse Spark 1.3</strong></td><td>Writes the spoken answer. Short replies for everyday questions. Meta web search for a public office, address, or phone number; speaks only what that search found.</td></tr>
+      <tr><td><strong>Muse Wonder 1.0</strong></td><td>Writes the spoken answer in Meta’s cloud with medium reasoning. Short replies for everyday questions. Meta web search for a public office, address, or phone number; speaks only what that search found.</td></tr>
       <tr><td><strong>Indian voice</strong></td><td>Speaks Hindi or Indian English on the phone. Meta MMS is only an offline fallback. No wait tone.</td></tr>
       <tr><td><strong>Exotel Voicebot</strong></td><td>Ordinary phone audio in and out. Not a browser call. One call at a time on this demo.</td></tr>
-      <tr><td><strong>Not in today’s call</strong></td><td>SAM, Muse Image, and Muse Wonder are not used on the live line. Interns could later learn with Muse Code on this same phone path.</td></tr>
+      <tr><td><strong>Not in today’s call</strong></td><td>SAM and Muse Image are not used on the live line. Interns could later learn with Muse Code on this same phone path.</td></tr>
     </tbody>
   </table>
 </section>
@@ -62,7 +62,7 @@ flowchart LR
   A["Feature phone dials\nordinary number"] --> B["Exotel Voicebot\n8 kHz audio WSS"]
   B --> C["BadaBhai on\nWindows Server"]
   C --> D["Meta Voice Transcribe"]
-  D --> E["Muse Spark 1.3\nanswer or web search"]
+  D --> E["Muse Wonder 1.0\nanswer or web search"]
   E --> F["Indian voice"]
   F --> B
   G["Live Desk\nopen call only"] --- C
@@ -72,7 +72,7 @@ flowchart LR
 
 <section class="section" style="padding-top:0">
   <h2>4. Host for this POC</h2>
-  <p style="max-width:820px;color:var(--muted)">This demo runs on one Windows Server 2022 machine with about 16 GB RAM, Nginx for TLS, and one Uvicorn process. There is no GPU on this host. Meta Voice Transcribe and Muse Spark run in Meta’s cloud. The Indian voice is synthesized on the server. Answers can take a few seconds, especially when Meta web search is used. That pause is expected for this POC. A faster private GPU box was not affordable for this hackathon.</p>
+  <p style="max-width:820px;color:var(--muted)">This demo runs on one Windows Server 2022 machine with about 16 GB RAM, Nginx for TLS, and one Uvicorn process. There is no GPU on this host. Meta Voice Transcribe and Muse Wonder run in Meta’s cloud. The Indian voice is synthesized on the server. Answers can take a few seconds, especially when Meta web search is used. That pause is expected for this POC. A faster private GPU box was not affordable for this hackathon.</p>
 </section>
 
 <section class="section" style="padding-top:0">
@@ -90,7 +90,7 @@ flowchart LR
 
 <section class="section" style="padding-top:0">
   <h2>6. What comes after the POC</h2>
-  <div class="phase"><strong>Today</strong><p>Exotel trial line · FastAPI on Windows Server 2022 · Meta speech-to-text and Muse Spark 1.3 · Indian voice · Hindi and English · one call · Live Desk · backup walkthrough</p></div>
+  <div class="phase"><strong>Today</strong><p>Exotel trial line · FastAPI on Windows Server 2022 · Meta speech-to-text and Muse Wonder 1.0 · Indian voice · Hindi and English · one call · Live Desk · backup walkthrough</p></div>
   <div class="phase"><strong>Next, if we build on</strong><p>Nearby work by voice for a Rajkot and Ahmedabad pilot, from consented or official sources only. After speaking a public office address or phone, ask on the call whether to SMS those details to the same number, only with a clear yes and DLT compliance.</p></div>
   <div class="phase"><strong>Later</strong><p>Official-source scheme explainers in more Indian languages, more phone lines, simpler menus, and a stronger host. Needs partners and approvals. None of that runs on the demo line today.</p></div>
   <div class="warn" style="background:#eef3e6;color:#405b4c">Independent prototype — not a Meta or government service.</div>

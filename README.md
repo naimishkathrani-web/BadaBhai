@@ -27,8 +27,10 @@ This is an independent prototype, not a Meta product and not a government servic
 ## Models
 
 - Hearing: Meta `muse-voice-transcribe-1.0`, biased to Hindi and English.
-- Answers: Meta `muse-spark-1.3`. Everyday questions stay short. A public office, address, or phone number uses the same model with Meta web search, and the voice says only what that search found.
+- Answers: Meta `muse-wonder-1.0` (Meta Model API cloud) with medium reasoning. Everyday questions stay short and stream to the phone as soon as the first sentence is ready. A public office, address, or phone number uses the same model with Meta web search, and the voice says only what that search found.
 - Speech: an Indian voice speaks the answer on the phone line. Meta MMS Hindi and English models are an optional local fallback and stay under CC-BY-NC-4.0.
+
+Wonder and Voice Transcribe run in Meta’s cloud, so this 16 GB Windows host does not need a GPU for the AI brain. Only the spoken voice is synthesized on the server.
 
 Nearby work by voice, SMS follow-up for addresses, more Indian languages, scheme explainers, village orders, and live translation are next steps. They are not features of the live call. Today's call is Hindi and English only.
 
@@ -51,6 +53,6 @@ Put `MODEL_API_KEY` and a long random `APP_TOKEN` in `.env`. Keep `.env` out of 
 
 Open `http://127.0.0.1:8000`. The public site on this project is Nginx in front of one Uvicorn process, because the call state stays in memory. One call at a time.
 
-This POC is hosted on a Windows Server 2022 machine with about 16 GB RAM and no GPU. Meta Voice Transcribe and Muse Spark run in Meta’s cloud. The Indian voice is synthesized on the server, so a short pause before the answer is normal for this demo.
+This POC is hosted on a Windows Server 2022 machine with about 16 GB RAM and no GPU. Meta Voice Transcribe and Muse Wonder run in Meta’s cloud. The Indian voice is synthesized on the server, so a short pause before the answer is normal for this demo.
 
 Deployment notes are in [DEPLOY_WINDOWS.md](DEPLOY_WINDOWS.md). Demo boundaries are in [HACKATHON.md](HACKATHON.md). Third-party terms are in [THIRD_PARTY.md](THIRD_PARTY.md).

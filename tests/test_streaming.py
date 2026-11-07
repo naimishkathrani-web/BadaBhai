@@ -42,7 +42,7 @@ def test_place_question_uses_meta_web_search():
     assert payload['tools'] == [{'type': 'web_search'}]
     chat_path, chat_payload = request_for([{'role': 'user', 'content': 'What is two plus two?'}], 'en')
     assert chat_path == '/chat/completions'
-    assert chat_payload['reasoning_effort'] == 'minimal'
+    assert chat_payload['reasoning_effort'] == 'medium'
     assert _lookup_sentences([
         'I will look up the office.',
         'The labour office is at Jilla Seva Sadan and the number is 0281-2474654.',
