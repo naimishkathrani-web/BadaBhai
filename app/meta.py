@@ -15,14 +15,23 @@ def key():
     return value
 
 
+# Live / changing facts → Meta web search. Pure knowledge questions stay on the fast chat path.
+# Avoid bare "phone" so "feature phone" stays on the fast path.
+LIVE_FACT_RE = re.compile(
+    r'\b(address|helpline|office|location|contact number|phone number|phone no|mobile number|'
+    r'labour|labor|worker|district|pata|'
+    r'train|railway|irctc|hotel|resort|tent|booking|itinerary|ticket|fare|price|cost|'
+    r'flight|bus|tourism|utsav|temple|trip|travel|package|weather|temperature|forecast|mausam|'
+    r'gold|silver|petrol|diesel|rate|score|match|news|timing|timings|schedule|'
+    r'availability|fees|charges|today|tonight|tomorrow|current|latest|aaj|kal)\b',
+    re.I,
+)
+
 LOOKUP_HINTS = (
-    'address', 'phone', 'contact', 'number', 'office', 'helpline', 'where', 'location',
-    'labour', 'labor', 'worker', 'district', 'pata', 'number',
-    'train', 'railway', 'irctc', 'hotel', 'resort', 'tent', 'booking', 'itinerary',
-    'ticket', 'fare', 'price', 'cost', 'flight', 'bus', 'tourism', 'utsav', 'temple',
     'पता', 'नंबर', 'नम्बर', 'दफ्तर', 'कार्यालय', 'फोन', 'संपर्क', 'कहाँ', 'कहां', 'हेल्पलाइन',
-    'श्रम', 'जिला', 'ट्रेन', 'रेल', 'होटल', 'रिसॉर्ट', 'टेंट', 'बुकिंग', 'किराया', 'किराया',
-    'दाम', 'खर्च', 'यात्रा', 'मंदिर', 'उत्सव', 'टिकट',
+    'श्रम', 'जिला', 'ट्रेन', 'रेल', 'होटल', 'रिसॉर्ट', 'टेंट', 'बुकिंग', 'किराया',
+    'दाम', 'खर्च', 'यात्रा', 'मंदिर', 'उत्सव', 'टिकट', 'मौसम', 'तापमान', 'सोना', 'चांदी',
+    'पेट्रोल', 'डीज़ल', 'आज', 'कल', 'खुला', 'बंद', 'समय', 'किराया', 'रेट', 'स्कॉर',
 )
 
 TRAVEL_HINTS = (
@@ -85,14 +94,11 @@ def needs_travel_help(messages):
 
 
 def needs_lookup(messages):
-    """Live facts: offices/phones and travel bookings need a fresh search."""
+    """Current public facts need a fresh search; textbook knowledge stays on the fast path."""
     text = _latest_user_text(messages)
-    folded = text.casefold()
-    if needs_travel_help(messages):
+    if LIVE_FACT_RE.search(text):
         return True
-    if re.search(r'\b(address|phone|helpline|office|location|contact|labour|labor|worker|district|pata)\b', folded):
-        return True
-    return any(hint in text for hint in LOOKUP_HINTS if not hint.isascii())
+    return any(hint in text for hint in LOOKUP_HINTS)
 
 
 def system_prompt(language, lookup=False, travel=False):
@@ -107,12 +113,13 @@ def system_prompt(language, lookup=False, travel=False):
         'If asked who built your models, say Meta. '
         f'Reply only in {spoken}. '
         'If the caller mixed Hindi and English, still stay in that reply language. '
+        'Be useful for many everyday situations: explaining, planning, comparing choices, and clear next steps. '
         'Sound like a normal conversation. Start with the answer in the first words. '
         'Use one short sentence, or two only when needed. No lists and no web addresses. '
         'Do not ask a follow-up question. Do not offer more help. '
         'Do not mention keypad buttons, menus, recording, or apps. '
         'Never say you are recording, storing, transcribing, or training on the call. '
-        'Never invent a street, a phone number, account data, or a job listing. '
+        'Never invent a street, a phone number, account data, live fare, or a job listing. '
         'Do not decide eligibility or give a medical diagnosis. '
         'Do not ask for Aadhaar, OTP, bank numbers, or PINs. '
         'For danger, tell them to contact local emergency help. '
@@ -129,16 +136,17 @@ def system_prompt(language, lookup=False, travel=False):
         )
     elif lookup:
         system += (
-            ' This question needs a public address or phone number. Search before you speak. '
-            'Do not say that you are searching. Speak only the result, in Devanagari when the reply language is Hindi. '
-            'First sentence: the office name, the area, and the phone number if you found them. '
-            'If you cannot confirm them, say that in one sentence. Do not guess a street or a number.'
+            ' This question needs a current public fact. Search before you speak. '
+            'Do not say that you are searching. Speak only confirmed facts, in Devanagari when the reply language is Hindi. '
+            'Prefer names, numbers, timings, rates, or places you actually found. '
+            'If you cannot confirm them, say that in one sentence and give one official place to check. '
+            'Do not invent a street, phone number, fare, or rate.'
         )
     return system
 
 
 def _history(messages):
-    return [{'role': item['role'], 'content': item.get('content') or ''} for item in messages[-8:]]
+    return [{'role': item['role'], 'content': item.get('content') or ''} for item in messages[-6:]]
 
 
 def request_for(messages, language):
@@ -146,21 +154,21 @@ def request_for(messages, language):
     history = _history(messages)
     model = os.getenv('META_CHAT_MODEL', 'muse-wonder-1.0')
     travel = needs_travel_help(messages)
-    # Medium reasoning needs headroom; spoken answers stay short via the prompt.
+    # Low reasoning keeps phone turns snappy; token headroom still covers short spoken answers.
     if needs_lookup(messages):
         return '/responses', {
             'model': model,
             'input': [{'role': 'system', 'content': system_prompt(language, lookup=True, travel=travel)}] + history,
             'tools': [{'type': 'web_search'}],
-            'reasoning': {'effort': os.getenv('META_LOOKUP_REASONING_EFFORT', 'medium')},
-            'max_output_tokens': int(os.getenv('META_LOOKUP_MAX_TOKENS', '1600')),
+            'reasoning': {'effort': os.getenv('META_LOOKUP_REASONING_EFFORT', 'low')},
+            'max_output_tokens': int(os.getenv('META_LOOKUP_MAX_TOKENS', '1200')),
             'stream': True,
         }
     return '/chat/completions', {
         'model': model,
         'messages': [{'role': 'system', 'content': system_prompt(language)}] + history,
-        'reasoning_effort': os.getenv('META_REASONING_EFFORT', 'medium'),
-        'max_tokens': int(os.getenv('META_MAX_TOKENS', '1200')),
+        'reasoning_effort': os.getenv('META_REASONING_EFFORT', 'low'),
+        'max_tokens': int(os.getenv('META_MAX_TOKENS', '900')),
         'stream': True,
     }
 
@@ -219,8 +227,10 @@ def _search_status(sentence):
     folded = sentence.casefold()
     markers = (
         'dhoondh', 'looking', 'look up', 'let me search', 'found a', "i'll open", 'i will open',
-        'still searching', 'रहा हूँ', 'रही हूँ', 'ढूंढ', 'ढूँढ', 'suchi', 'सूची',
+        'still searching', 'got it', "i'll confirm", 'i will confirm', 'before answering',
+        'रहा हूँ', 'रही हूँ', 'ढूंढ', 'ढूँढ', 'suchi', 'सूची',
         'mil gaya', 'bata raha', 'bata rahi', 'खोज', 'देखकर बताता', 'देख कर बताता',
+        'पक्का करके बताता', 'मिलें नंबर अलग', 'मिले नंबर अलग',
     )
     return any(marker in folded or marker in sentence for marker in markers)
 
@@ -231,9 +241,11 @@ def _looks_factual(sentence):
         return True
     cues = (
         'train', 'express', 'special', 'tent', 'hotel', 'resort', 'rupee', 'rs', 'km',
-        'temple', 'bhuj', 'rajkot', 'irctc', 'night', 'morning',
+        'temple', 'bhuj', 'rajkot', 'irctc', 'night', 'morning', 'office', 'weather',
+        'degree', 'celsius', 'open', 'closed',
         'ट्रेन', 'स्पेशल', 'एक्सप्रेस', 'टेंट', 'होटल', 'रिसॉर्ट', 'रुपये', 'किलो',
-        'मंदिर', 'भुज', 'राजकोट', 'हज़ार', 'हजार', 'किराया', 'दाम',
+        'मंदिर', 'भुज', 'राजकोट', 'हज़ार', 'हजार', 'किराया', 'दाम', 'कार्यालय', 'मौसम',
+        'डिग्री', 'खुला', 'बंद',
     )
     return any(cue in folded or cue in sentence for cue in cues)
 
@@ -282,8 +294,8 @@ async def _chat_fallback(messages, language, model):
     fallback = {
         'model': model,
         'messages': [{'role': 'system', 'content': system_prompt(language, travel=travel)}] + _history(messages),
-        'reasoning_effort': os.getenv('META_REASONING_EFFORT', 'medium'),
-        'max_tokens': int(os.getenv('META_MAX_TOKENS', '1200')),
+        'reasoning_effort': os.getenv('META_REASONING_EFFORT', 'low'),
+        'max_tokens': int(os.getenv('META_MAX_TOKENS', '900')),
         'stream': True,
     }
     emitted = []

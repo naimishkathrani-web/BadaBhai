@@ -640,12 +640,7 @@ class Call:
                     await self.publish('assistant_state', status='thinking')
                     log.warning('Requesting Meta answer')
                     started = time.perf_counter()
-                    if meta.needs_lookup(model_messages):
-                        if meta.needs_travel_help(model_messages):
-                            tip = 'एक पल, ट्रेन और ठहरने की जानकारी देख रहा हूँ।' if self.language == 'hi' else 'One moment, checking trains and stay options.'
-                        else:
-                            tip = 'पता देख रहा हूँ।' if self.language == 'hi' else 'Let me check that.'
-                        await self.say(tip, self.language)
+                    # Start the model immediately. A spoken "checking" tip only adds phone delay.
                     self.turn_task = asyncio.create_task(self.speak_answer(model_messages, self.language))
                     try:
                         reply = await self.turn_task

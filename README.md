@@ -26,7 +26,7 @@ This is an independent prototype, not a Meta product and not a government servic
 ## Models
 
 - Hearing: Meta `muse-voice-transcribe-1.0`, biased to Hindi and English.
-- Answers: Meta `muse-wonder-1.0` (Meta Model API cloud) with medium reasoning. Everyday questions stay short and stream to the phone as soon as the first sentence is ready. Public office details and travel questions (trains, hotels, tents, costs) use Meta web search, and the voice speaks only what that search found.
+- Answers: Meta `muse-wonder-1.0` (Meta Model API cloud) with low reasoning for faster phone turns. Everyday questions stay short and stream as soon as the first sentence is ready. Live facts (offices, travel, prices, weather, timings) use Meta web search; textbook questions stay on the fast path.
 - Language: auto-detected per turn from the caller transcript (Hindi, including romanized Hindi, or English). No keypad language menu.
 - Speech: an Indian voice speaks the answer on the phone line. Meta MMS Hindi and English models are an optional local fallback and stay under CC-BY-NC-4.0.
 
